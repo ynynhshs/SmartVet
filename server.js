@@ -4,6 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const path = require('path');
+const fs = require('fs');
 
 const connectDB = require('./src/config/db');
 const cron = require('node-cron');
@@ -24,6 +25,13 @@ const iotRoutes = require('./src/routes/iotRoutes');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+
+const uploadDirs = ['uploads/pet-photos', 'uploads/profile-photos'];
+uploadDirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
 
 app.use(helmet({
     contentSecurityPolicy: {
