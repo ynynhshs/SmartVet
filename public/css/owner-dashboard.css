@@ -1525,70 +1525,134 @@ body.theme-transitioning * {
 }
 
 /* =========================================================
-   SmartVet Mobile Responsiveness Overrides
+   SmartVet Mobile Bottom Navigation (Targeting Buttons)
    ========================================================= */
 @media (max-width: 760px) {
-    /* 1. Fix the shell layout so it doesn't stack awkwardly */
+    /* 1. Main layout */
     .owner-shell {
         display: block !important;
+        padding-bottom: 120px !important;
+    }
+    main.owner-main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 20px 15px 40px !important;
+        box-sizing: border-box !important;
     }
 
-    /* 2. Turn the sidebar into a hidden slide-out menu */
+    /* 2. Floating Sidebar Container */
     .owner-sidebar {
         position: fixed !important;
-        top: 0;
-        left: 0;
-        width: 280px;
-        height: 100vh !important;
-        z-index: 1000;
-        transform: translateX(-100%); /* Hides it off-screen */
-        transition: transform 0.3s ease-in-out;
+        bottom: 15px !important;
+        left: 15px !important;
+        right: 15px !important;
+        top: auto !important;
+        width: auto !important;
+        height: 75px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
         margin: 0 !important;
-        box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-        overflow-y: auto;
-        background: #fff; /* Ensure it has a background */
+        z-index: 9999;
+        display: flex !important;
+        justify-content: center !important;
     }
 
-    /* 3. Slide it in when the 'open' class is added by JavaScript */
-    .owner-sidebar.open,
-    .owner-sidebar.show,
-    .owner-sidebar.active {
-        transform: translateX(0);
+    /* 3. Hide extra sidebar stuff */
+    .owner-sidebar .sidebar-topbar,
+    .owner-sidebar .dark-mode-toggle, 
+    .owner-sidebar > h2,
+    .owner-sidebar > p {
+        display: none !important;
     }
 
-    /* 4. Make the main content take up the full screen */
-    main.owner-main {
-        padding: 20px 15px 40px !important;
+    /* 4. The Scrolling Glass Container */
+    .owner-navigation {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
         width: 100% !important;
-        margin-left: 0 !important;
+        height: 100% !important;
+        background: rgba(0, 122, 255, 0.404) !important;
+        backdrop-filter: blur(12px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: 99rem !important;
+        padding: 8px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+        gap: 8px !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+        scrollbar-width: none;
+    }
+    .owner-navigation::-webkit-scrollbar {
+        display: none;
     }
 
-    /* 5. Force all inputs and forms to be 100% width (Fixes My Account) */
-    input, select, textarea, .form-control, .form-group {
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box;
-    }
-
-    /* 6. Force grids to stack vertically */
-    .overview-stats,
-    .dashboard-grid,
-    .account-grid,
-    .profile-grid,
-    .pet-grid,
-    .form-row {
+    /* 5. Force Buttons to be a fixed size (No stretching) */
+    .owner-navigation button.nav-item {
         display: flex !important;
         flex-direction: column !important;
-        grid-template-columns: 1fr !important;
-        gap: 15px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 0 0 85px !important; 
+        width: 85px !important;
+        max-width: 85px !important;
+        height: 60px !important;
+        padding: 4px !important;
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 99rem !important;
+        font-size: 0.7rem !important;
+        font-weight: 600 !important;
+        color: #ffffff !important;
+        background: transparent !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: transparent;
+        transition: all 0.2s ease !important;
+        position: relative !important;
     }
 
-    /* 7. Prevent tables from breaking the screen width */
-    .table-responsive, table {
-        display: block;
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    /* 6. Clicking and Active Effects */
+    .owner-navigation button.nav-item:hover,
+    .owner-navigation button.nav-item.active {
+        background: rgba(237, 237, 237, 0.8) !important;
+        color: rgba(0, 122, 255, 1) !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+    }
+
+    .owner-navigation button.nav-item:active {
+        transform: scale(0.92) !important;
+    }
+
+    /* 7. Formatting Emojis and Text inside the button */
+    .owner-navigation button.nav-item .nav-icon {
+        font-size: 1.2rem !important;
+        line-height: 1 !important;
+        margin-bottom: 4px !important;
+    }
+
+    .owner-navigation button.nav-item > span:not(.nav-icon):not(.nav-count) {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        width: 100% !important;
+        text-align: center !important;
+    }
+
+    /* 8. Notification Badge Placement */
+    .owner-navigation button.nav-item .nav-count {
+        position: absolute !important;
+        top: 2px !important;
+        right: 2px !important;
+        background: #e74c3c !important;
+        color: white !important;
+        font-size: 0.6rem !important;
+        padding: 2px 6px !important;
+        border-radius: 10px !important;
+        line-height: 1 !important;
     }
 }
-

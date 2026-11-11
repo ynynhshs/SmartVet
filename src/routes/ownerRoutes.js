@@ -491,9 +491,18 @@ router.get('/pets/:petId/photo', async (req, res, next) => {
         res.set('Cache-Control', 'private, no-store');
         res.set('X-Content-Type-Options', 'nosniff');
 
-        return res.sendFile(photoPath, (error) => {
-            if (error && !res.headersSent) {
-                return next(error);
+                return res.sendFile(photoPath, (error) => {
+            if (error) {
+                if (!res.headersSent) {
+                    // If the image file is missing from the uploads folder, send a 404 instead of a 500 crash
+                    if (error.code === 'ENOENT') {
+                        return res.status(404).json({
+                            success: false,
+                            message: 'Pet photo file is missing from the server.'
+                        });
+                    }
+                    return next(error);
+                }
             }
         });
     } catch (error) {
