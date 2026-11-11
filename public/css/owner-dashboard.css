@@ -1523,3 +1523,72 @@ body.theme-transitioning * {
     place-items: center;
     font-size: 2.5rem;
 }
+
+/* =========================================================
+   SmartVet Mobile Responsiveness Overrides
+   ========================================================= */
+@media (max-width: 760px) {
+    /* 1. Fix the shell layout so it doesn't stack awkwardly */
+    .owner-shell {
+        display: block !important;
+    }
+
+    /* 2. Turn the sidebar into a hidden slide-out menu */
+    .owner-sidebar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100vh !important;
+        z-index: 1000;
+        transform: translateX(-100%); /* Hides it off-screen */
+        transition: transform 0.3s ease-in-out;
+        margin: 0 !important;
+        box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+        overflow-y: auto;
+        background: #fff; /* Ensure it has a background */
+    }
+
+    /* 3. Slide it in when the 'open' class is added by JavaScript */
+    .owner-sidebar.open,
+    .owner-sidebar.show,
+    .owner-sidebar.active {
+        transform: translateX(0);
+    }
+
+    /* 4. Make the main content take up the full screen */
+    main.owner-main {
+        padding: 20px 15px 40px !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+
+    /* 5. Force all inputs and forms to be 100% width (Fixes My Account) */
+    input, select, textarea, .form-control, .form-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    /* 6. Force grids to stack vertically */
+    .overview-stats,
+    .dashboard-grid,
+    .account-grid,
+    .profile-grid,
+    .pet-grid,
+    .form-row {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+        gap: 15px !important;
+    }
+
+    /* 7. Prevent tables from breaking the screen width */
+    .table-responsive, table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+

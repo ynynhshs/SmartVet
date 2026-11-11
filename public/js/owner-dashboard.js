@@ -1370,4 +1370,21 @@ if (accountProfileForm) {
     });
 }
 
+
+/* =========================================================
+   Mobile Sidebar Toggle Logic
+   ========================================================= */
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.querySelector('.owner-sidebar');
+    const toggleBtn = document.querySelector('.sidebar-toggle');
+
+    if (sidebar && toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // This adds or removes the 'open' class, which triggers the CSS animation
+            sidebar.classList.toggle('open');
+        });
+    }
+});
+
 verifyOwner();
