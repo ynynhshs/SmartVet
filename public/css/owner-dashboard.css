@@ -1525,7 +1525,7 @@ body.theme-transitioning * {
 }
 
 /* =========================================================
-   SmartVet Mobile Bottom Navigation (Targeting Buttons)
+   SmartVet Mobile Bottom Navigation (Polished Reference Match)
    ========================================================= */
 @media (max-width: 760px) {
     /* 1. Main layout */
@@ -1548,111 +1548,128 @@ body.theme-transitioning * {
         right: 15px !important;
         top: auto !important;
         width: auto !important;
-        height: 75px !important;
+        height: 70px !important; /* Slightly shorter to look sleeker */
+        min-height: 0 !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
         margin: 0 !important;
         z-index: 9999;
-        display: flex !important;
-        justify-content: center !important;
+        display: block !important;
     }
 
-    /* 3. Hide extra sidebar stuff */
+    /* 3. Hide unwanted sidebar text */
     .owner-sidebar .sidebar-topbar,
-    .owner-sidebar .dark-mode-toggle, 
-    .owner-sidebar > h2,
-    .owner-sidebar > p {
+    .owner-sidebar .sidebar-heading,
+    .owner-sidebar .sidebar-theme-area {
         display: none !important;
     }
 
-    /* 4. The Scrolling Glass Container */
+    /* 4. The Glass Pill Container (Matches Reference exactly) */
     .owner-navigation {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
         width: 100% !important;
         height: 100% !important;
-        background: rgba(0, 122, 255, 0.404) !important;
-        backdrop-filter: blur(12px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+        
+        /* Glassmorphism gradient from reference */
+        background: linear-gradient(135deg, rgba(116, 185, 255, 0.85), rgba(161, 196, 253, 0.85)) !important;
+        backdrop-filter: blur(12px) saturate(180%) contrast(200%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(180%) contrast(200%) !important;
         border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        
         border-radius: 99rem !important;
-        padding: 8px !important;
+        padding: 6px !important;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
-        gap: 8px !important;
-        align-items: center !important;
+        gap: 2px !important; 
+        align-items: stretch !important; 
         box-sizing: border-box !important;
-        scrollbar-width: none;
-    }
-    .owner-navigation::-webkit-scrollbar {
-        display: none;
+        overflow: hidden !important; /* Forces fit */
     }
 
-    /* 5. Force Buttons to be a fixed size (No stretching) */
+    /* 5. Buttons (Flexibly share space) */
     .owner-navigation button.nav-item {
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        flex: 0 0 85px !important; 
-        width: 85px !important;
-        max-width: 85px !important;
-        height: 60px !important;
-        padding: 4px !important;
+        
+        flex: 1 1 0% !important; 
+        width: 0 !important;     
+        min-width: 0 !important; 
+        
+        height: 100% !important;
+        padding: 4px 2px !important;
         margin: 0 !important;
         border: none !important;
         border-radius: 99rem !important;
-        font-size: 0.7rem !important;
+        font-size: 0.6rem !important; /* Clean fit */
         font-weight: 600 !important;
-        color: #ffffff !important;
+        color: rgba(255, 255, 255, 0.95) !important;
         background: transparent !important;
         cursor: pointer !important;
         -webkit-tap-highlight-color: transparent;
-        transition: all 0.2s ease !important;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         position: relative !important;
+        box-sizing: border-box !important;
     }
 
-    /* 6. Clicking and Active Effects */
-    .owner-navigation button.nav-item:hover,
+    /* 6. Active State (The exact pill and shadows from reference) */
     .owner-navigation button.nav-item.active {
-        background: rgba(237, 237, 237, 0.8) !important;
-        color: rgba(0, 122, 255, 1) !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+        background: rgba(255, 255, 255, 0.9) !important; 
+        color: #007aff !important;
+        
+        /* Inner shadow from reference */
+        box-shadow:
+            inset 2px 2px 5px -2px rgba(255, 255, 255, 0.4),
+            inset -2px -1px 5px 0 rgba(255, 255, 255, 0.4),
+            inset 0 -2px 0 rgba(255, 255, 255, 0.2) !important;
     }
 
+    /* 7. Clicking (Spring Effect) */
     .owner-navigation button.nav-item:active {
         transform: scale(0.92) !important;
     }
 
-    /* 7. Formatting Emojis and Text inside the button */
+    /* 8. Icons */
     .owner-navigation button.nav-item .nav-icon {
-        font-size: 1.2rem !important;
+        background: transparent !important; 
+        color: inherit !important;
+        font-size: 1.1rem !important; 
         line-height: 1 !important;
-        margin-bottom: 4px !important;
+        margin-bottom: 2px !important;
+        display: block !important;
+        width: auto !important;
+        height: auto !important;
+        border-radius: 0 !important;
     }
 
+    /* 9. Truncate Text beautifully */
     .owner-navigation button.nav-item > span:not(.nav-icon):not(.nav-count) {
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         width: 100% !important;
+        display: block !important;
         text-align: center !important;
+        letter-spacing: -0.3px !important; /* Squeezes text slightly to fit better */
     }
 
-    /* 8. Notification Badge Placement */
+    /* 10. Notification Badge (Perfectly Placed) */
     .owner-navigation button.nav-item .nav-count {
         position: absolute !important;
         top: 2px !important;
-        right: 2px !important;
-        background: #e74c3c !important;
+        right: 6px !important;
+        background: #ff3b30 !important; /* iOS Red */
         color: white !important;
-        font-size: 0.6rem !important;
-        padding: 2px 6px !important;
+        font-size: 0.55rem !important; 
+        padding: 1px 4px !important;
         border-radius: 10px !important;
-        line-height: 1 !important;
+        line-height: 1.2 !important;
+        min-width: 14px !important;
+        text-align: center !important;
+        border: 1px solid #fff !important; /* Adds a nice pop */
     }
 }
