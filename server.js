@@ -137,8 +137,8 @@ async function startServer() {
         console.error(
             'SmartVet could not connect to MongoDB or start.'
         );
-        console.error('Error:', error.message);
-        process.exitCode = 1;
+        console.error('FULL ERROR:', error);
+        process.exit(1);
     }
 }
 
