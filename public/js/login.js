@@ -28,6 +28,13 @@ showRegisterButton.addEventListener('click', showRegisterView);
 showLoginButton.addEventListener('click', showLoginView);
 
 function redirectByRole(user) {
+    const ownerAppMode = new URLSearchParams(window.location.search).get('app') === 'owner';
+    if (ownerAppMode && user?.role !== 'owner') {
+        sessionStorage.removeItem('smartvetAccessToken');
+        sessionStorage.removeItem('smartvetUser');
+        throw new Error('The SmartVet mobile app is for pet-owner accounts only.');
+    }
+
     const destinations = {
         owner: '/owner/dashboard.html',
         veterinary: '/clinic/dashboard.html',

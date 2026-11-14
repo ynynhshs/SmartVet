@@ -7,3 +7,9 @@ coverage/
 .DS_Store
 token.txt
 uploads/
+android/.gradle/
+android/local.properties
+android/**/build/
+*.apk
+*.jks
+*.keystore

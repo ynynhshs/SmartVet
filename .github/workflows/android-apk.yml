@@ -1,0 +1,79 @@
+name: Build SmartVet Owner Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - android-v*
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Check signing secrets and decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "::error::Configure all Android signing secrets before building a release APK."
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/smartvet-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/smartvet-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          VERSION_NAME="${GITHUB_REF_NAME#android-v}"
+          if [[ "$VERSION_NAME" == "$GITHUB_REF_NAME" ]]; then
+            VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
+          fi
+          gradle --no-daemon :app:assembleRelease \
+            -PappVersionCode="$GITHUB_RUN_NUMBER" \
+            -PappVersionName="$VERSION_NAME"
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/SmartVet.apk"
+
+      - name: Upload APK build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartVet-Owner-Android-APK
+          path: ${{ runner.temp }}/SmartVet.apk
+          if-no-files-found: error
+
+      - name: Publish APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SmartVet Owner Android ${{ github.ref_name }}
+          generate_release_notes: true
+          make_latest: true
+          files: ${{ runner.temp }}/SmartVet.apk

@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+def signingStorePath = System.getenv('ANDROID_KEYSTORE_PATH')
+def signingStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+def signingKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
+def signingKeyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+def releaseSigningConfigured = signingStorePath && signingStorePassword && signingKeyAlias && signingKeyPassword
+def configuredBaseUrl = providers.gradleProperty('smartvetBaseUrl')
+    .orElse(providers.environmentVariable('SMARTVET_BASE_URL'))
+    .getOrElse('https://smartvet-3yqh.onrender.com')
+def escapedBaseUrl = configuredBaseUrl.replace('\\', '\\\\').replace('"', '\\"')
+
+android {
+    namespace 'com.smartvet.vetcare'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.smartvet.vetcare'
+        minSdk 23
+        targetSdk 34
+        versionCode (findProperty('appVersionCode') ?: '1').toInteger()
+        versionName findProperty('appVersionName') ?: '1.0.0'
+        buildConfigField 'String', 'SMARTVET_BASE_URL', "\"${escapedBaseUrl}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    signingConfigs {
+        release {
+            if (releaseSigningConfigured) {
+                storeFile file(signingStorePath)
+                storePassword signingStorePassword
+                keyAlias signingKeyAlias
+                keyPassword signingKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+        }
+    }
+}
