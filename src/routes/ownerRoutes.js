@@ -5,15 +5,14 @@ const { body, validationResult } = require('express-validator');
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const User = require('../models/User');
-
 const Pet = require('../models/Pet');
 const VaccinationRecord = require('../models/VaccinationRecord');
 const Notification = require('../models/Notification');
-
 const FeedingEvent = require('../models/FeedingEvent');
 const ActivityRecord = require('../models/ActivityRecord');
 
@@ -24,10 +23,29 @@ const {
 
 const router = express.Router();
 
-// Store pet photos outside the public frontend directory.
-const petPhotoDirectory = path.join(__dirname, '../../uploads/pet-photos');
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-fs.mkdirSync(petPhotoDirectory, { recursive: true });
+// 1. Cloudinary Storage Definitions
+const petPhotoStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'smartvet/pets',
+        allowed_formats: ['jpg', 'png', 'webp']
+    }
+});
+
+const profilePhotoStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'smartvet/profiles',
+        allowed_formats: ['jpg', 'png', 'webp']
+    }
+});
 
 const allowedPetPhotoTypes = {
     'image/jpeg': '.jpg',
@@ -35,161 +53,78 @@ const allowedPetPhotoTypes = {
     'image/webp': '.webp'
 };
 
-const petPhotoStorage = multer.diskStorage({
-    destination: (_req, _file, callback) => {
-        callback(null, petPhotoDirectory);
-    },
-    filename: (_req, file, callback) => {
-        const extension = allowedPetPhotoTypes[file.mimetype];
-
-        callback(
-            null,
-            `${crypto.randomBytes(16).toString('hex')}${extension}`
-        );
-    }
-});
-
-const petPhotoUpload = multer({
-    storage: petPhotoStorage,
-    limits: {
-        fileSize: 5 * 1024 * 1024,
-        files: 1
-    },
-    fileFilter: (_req, file, callback) => {
-        if (!Object.prototype.hasOwnProperty.call(
-            allowedPetPhotoTypes,
-            file.mimetype
-        )) {
-            const error = new Error(
-                'Pet photo must be a JPG, PNG, or WebP image.'
-            );
-
-            error.code = 'INVALID_PET_PHOTO_TYPE';
-            return callback(error);
-        }
-
-        callback(null, true);
-    }
-});
-
-
-const profilePhotoDirectory = path.join(
-    __dirname,
-    '../../uploads/profile-photos'
-);
-
-fs.mkdirSync(profilePhotoDirectory, { recursive: true });
-
 const allowedProfilePhotoTypes = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/webp': '.webp'
 };
 
-const profilePhotoStorage = multer.diskStorage({
-    destination: (_req, _file, callback) => {
-        callback(null, profilePhotoDirectory);
-    },
-    filename: (_req, file, callback) => {
-        const extension = allowedProfilePhotoTypes[file.mimetype];
-
-        callback(
-            null,
-            `${crypto.randomBytes(16).toString('hex')}${extension}`
-        );
+// 2. Multer Configurations
+const petPhotoUpload = multer({
+    storage: petPhotoStorage,
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    fileFilter: (_req, file, callback) => {
+        if (!Object.prototype.hasOwnProperty.call(allowedPetPhotoTypes, file.mimetype)) {
+            const error = new Error('Pet photo must be a JPG, PNG, or WebP image.');
+            error.code = 'INVALID_PET_PHOTO_TYPE';
+            return callback(error);
+        }
+        callback(null, true);
     }
 });
 
 const profilePhotoUpload = multer({
     storage: profilePhotoStorage,
-    limits: {
-        fileSize: 5 * 1024 * 1024,
-        files: 1
-    },
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
     fileFilter: (_req, file, callback) => {
-        if (!Object.prototype.hasOwnProperty.call(
-            allowedProfilePhotoTypes,
-            file.mimetype
-        )) {
-            const error = new Error(
-                'Profile photo must be a JPG, PNG, or WebP image.'
-            );
-
+        if (!Object.prototype.hasOwnProperty.call(allowedProfilePhotoTypes, file.mimetype)) {
+            const error = new Error('Profile photo must be a JPG, PNG, or WebP image.');
             error.code = 'INVALID_PROFILE_PHOTO_TYPE';
             return callback(error);
         }
-
         callback(null, true);
     }
 });
 
-
+// 3. Handlers
 function handlePetPhotoUpload(req, res, next) {
     petPhotoUpload.single('petPhoto')(req, res, (error) => {
-        if (!error) {
-            return next();
-        }
+        if (!error) return next();
 
         if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ success: false, message: 'Pet photo must not exceed 5 MB.' });
+        }
+        if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'INVALID_PET_PHOTO_TYPE') {
             return res.status(400).json({
                 success: false,
-                message: 'Pet photo must not exceed 5 MB.'
+                message: error.code === 'INVALID_PET_PHOTO_TYPE' ? error.message : 'Only one pet photo may be uploaded.'
             });
         }
-
-        if (
-            error.code === 'LIMIT_UNEXPECTED_FILE' ||
-            error.code === 'INVALID_PET_PHOTO_TYPE'
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: error.code === 'INVALID_PET_PHOTO_TYPE'
-                    ? error.message
-                    : 'Only one pet photo may be uploaded.'
-            });
-        }
-
         return next(error);
     });
 }
-
 
 function handleProfilePhotoUpload(req, res, next) {
     profilePhotoUpload.single('profilePhoto')(req, res, (error) => {
-        if (!error) {
-            return next();
-        }
+        if (!error) return next();
 
         if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ success: false, message: 'Profile photo must not exceed 5 MB.' });
+        }
+        if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'INVALID_PROFILE_PHOTO_TYPE') {
             return res.status(400).json({
                 success: false,
-                message: 'Profile photo must not exceed 5 MB.'
+                message: error.code === 'INVALID_PROFILE_PHOTO_TYPE' ? error.message : 'Only one profile photo may be uploaded.'
             });
         }
-
-        if (
-            error.code === 'LIMIT_UNEXPECTED_FILE' ||
-            error.code === 'INVALID_PROFILE_PHOTO_TYPE'
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: error.code === 'INVALID_PROFILE_PHOTO_TYPE'
-                    ? error.message
-                    : 'Only one profile photo may be uploaded.'
-            });
-        }
-
         return next(error);
     });
 }
-
 
 // All endpoints in this router require an authenticated pet owner.
 router.use(requireAuth, authorizeRoles('owner'));
 
-
-/* GET /api/owner/profile/photo
-   Retrieve the logged-in owner's own profile photo. */
+/* GET /api/owner/profile/photo */
 router.get('/profile/photo', async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id)
@@ -197,43 +132,34 @@ router.get('/profile/photo', async (req, res, next) => {
             .lean();
 
         if (!user || user.role !== 'owner') {
-            return res.status(404).json({
-                success: false,
-                message: 'Owner account not found.'
-            });
+            return res.status(404).json({ success: false, message: 'Owner account not found.' });
         }
 
         const filename = user.profilePhotoFilename;
 
-        if (
-            !filename ||
-            !user.profilePhotoContentType ||
-            !/^[a-f0-9]{32}\.(jpg|png|webp)$/i.test(filename)
-        ) {
-            return res.status(404).json({
-                success: false,
-                message: 'No profile photo is available.'
-            });
+        if (!filename || !user.profilePhotoContentType) {
+            return res.status(404).json({ success: false, message: 'No profile photo is available.' });
         }
 
-        const photoPath = path.join(profilePhotoDirectory, filename);
+        // If it's a Cloudinary URL, redirect straight to the image
+        if (filename.startsWith('http')) {
+            return res.redirect(filename);
+        }
+
+        // Legacy fallback for older local images (if they still exist)
+        if (!/^[a-f0-9]{32}\.(jpg|png|webp)$/i.test(filename)) {
+            return res.status(404).json({ success: false, message: 'No profile photo is available.' });
+        }
+
+        const photoPath = path.join(__dirname, '../../uploads/profile-photos', filename);
 
         res.set('Content-Type', user.profilePhotoContentType);
         res.set('Cache-Control', 'private, no-store');
         res.set('X-Content-Type-Options', 'nosniff');
 
         return res.sendFile(photoPath, (error) => {
-            if (error) {
-                if (!res.headersSent) {
-                    // If the image file is missing, send a 404 instead of a 500 crash
-                    if (error.code === 'ENOENT') {
-                        return res.status(404).json({
-                            success: false,
-                            message: 'Profile photo file is missing from the server.'
-                        });
-                    }
-                    return next(error);
-                }
+            if (error && !res.headersSent) {
+                return res.status(404).json({ success: false, message: 'Profile photo file is missing from the server.' });
             }
         });
     } catch (error) {
@@ -241,88 +167,45 @@ router.get('/profile/photo', async (req, res, next) => {
     }
 });
 
-/* POST /api/owner/profile/photo
-   Upload or replace the logged-in owner's own profile photo. */
-router.post(
-    '/profile/photo',
-    handleProfilePhotoUpload,
-    async (req, res, next) => {
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please select a profile photo.'
-            });
-        }
-
-        try {
-            const user = await User.findById(req.user.id);
-
-            if (!user || user.role !== 'owner') {
-                fs.unlink(req.file.path, () => {});
-
-                return res.status(404).json({
-                    success: false,
-                    message: 'Owner account not found.'
-                });
-            }
-
-            const previousFilename = user.profilePhotoFilename;
-
-            user.profilePhotoFilename = req.file.filename;
-            user.profilePhotoContentType = req.file.mimetype;
-            user.profilePhotoOriginalName = path.basename(
-                req.file.originalname
-            ).slice(0, 255);
-            user.profilePhotoSize = req.file.size;
-
-            try {
-                await user.save();
-            } catch (saveError) {
-                fs.unlink(req.file.path, () => {});
-                throw saveError;
-            }
-
-            // Remove the previous image only after the new one is saved.
-            if (
-                previousFilename &&
-                /^[a-f0-9]{32}\.(jpg|png|webp)$/i.test(previousFilename)
-            ) {
-                const previousPath = path.join(
-                    profilePhotoDirectory,
-                    previousFilename
-                );
-
-                fs.unlink(previousPath, () => {});
-            }
-
-            return res.status(200).json({
-                success: true,
-                message: 'Profile photo uploaded successfully.',
-                photoUrl: '/api/owner/profile/photo'
-            });
-        } catch (error) {
-            return next(error);
-        }
+/* POST /api/owner/profile/photo */
+router.post('/profile/photo', handleProfilePhotoUpload, async (req, res, next) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Please select a profile photo.' });
     }
-);
 
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (!user || user.role !== 'owner') {
+            return res.status(404).json({ success: false, message: 'Owner account not found.' });
+        }
+
+        user.profilePhotoFilename = req.file.path; // Cloudinary URL
+        user.profilePhotoContentType = req.file.mimetype;
+        user.profilePhotoOriginalName = path.basename(req.file.originalname).slice(0, 255);
+        user.profilePhotoSize = req.file.size;
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Profile photo uploaded successfully.',
+            photoUrl: '/api/owner/profile/photo'
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
 
 // GET /api/owner/profile
-// Retrieve the authenticated owner's personal information.
 router.get('/profile', async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id)
-            .select(
-                'fullName email phone address role ' +
-                'profilePhotoFilename profilePhotoContentType'
-            )
+            .select('fullName email phone address role profilePhotoFilename profilePhotoContentType')
             .lean();
 
         if (!user || user.role !== 'owner') {
-            return res.status(404).json({
-                success: false,
-                message: 'Owner account not found.'
-            });
+            return res.status(404).json({ success: false, message: 'Owner account not found.' });
         }
 
         return res.status(200).json({
@@ -333,10 +216,7 @@ router.get('/profile', async (req, res, next) => {
                 email: user.email,
                 phone: user.phone || '',
                 address: user.address || '',
-                hasProfilePhoto: Boolean(
-                    user.profilePhotoFilename &&
-                    user.profilePhotoContentType
-                )
+                hasProfilePhoto: Boolean(user.profilePhotoFilename && user.profilePhotoContentType)
             }
         });
     } catch (error) {
@@ -345,173 +225,91 @@ router.get('/profile', async (req, res, next) => {
 });
 
 // PATCH /api/owner/profile
-// Update only the authenticated owner's personal information.
-router.patch(
-    '/profile',
-    [
-        body('fullName')
-            .isString()
-            .withMessage('Please enter a valid full name.')
-            .bail()
-            .trim()
-            .isLength({ min: 2, max: 120 })
-            .withMessage('Full name must be 2 to 120 characters.'),
-
-        body('email')
-            .isString()
-            .withMessage('Please enter a valid email address.')
-            .bail()
-            .trim()
-            .isEmail()
-            .withMessage('Please enter a valid email address.')
-            .bail()
-            .isLength({ max: 254 })
-            .withMessage('Email address is too long.'),
-
-        body('phone')
-            .optional({ checkFalsy: true })
-            .isString()
-            .withMessage('Please enter a valid phone number.')
-            .bail()
-            .trim()
-            .isLength({ max: 30 })
-            .withMessage('Phone number must not exceed 30 characters.'),
-
-        body('address')
-            .optional({ checkFalsy: true })
-            .isString()
-            .withMessage('Please enter a valid address.')
-            .bail()
-            .trim()
-            .isLength({ max: 250 })
-            .withMessage('Address must not exceed 250 characters.')
-    ],
-    async (req, res, next) => {
-        const errors = validationResult(req);
-
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                success: false,
-                message: errors.array()[0].msg
-            });
-        }
-
-        try {
-            const user = await User.findById(req.user.id);
-
-            if (!user || user.role !== 'owner') {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Owner account not found.'
-                });
-            }
-
-            user.fullName = req.body.fullName.trim();
-            user.email = req.body.email.trim().toLowerCase();
-
-            if (typeof req.body.phone === 'string') {
-                user.phone = req.body.phone.trim();
-            }
-
-            if (typeof req.body.address === 'string') {
-                user.address = req.body.address.trim();
-            }
-
-            await user.save();
-
-            return res.status(200).json({
-                success: true,
-                message: 'Personal information updated successfully.',
-                user: {
-                    id: user._id.toString(),
-                    fullName: user.fullName,
-                    email: user.email,
-                    phone: user.phone || '',
-                    address: user.address || '',
-                    hasProfilePhoto: Boolean(
-                        user.profilePhotoFilename &&
-                        user.profilePhotoContentType
-                    )
-                }
-            });
-        } catch (error) {
-            if (error && error.code === 11000) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'That email address is already in use.'
-                });
-            }
-
-            return next(error);
-        }
+router.patch('/profile', [
+    body('fullName').isString().trim().isLength({ min: 2, max: 120 }),
+    body('email').isString().trim().isEmail().isLength({ max: 254 }),
+    body('phone').optional({ checkFalsy: true }).isString().trim().isLength({ max: 30 }),
+    body('address').optional({ checkFalsy: true }).isString().trim().isLength({ max: 250 })
+], async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
     }
-);
 
-// Allow an owner to view a photo belonging to their own pet.
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user || user.role !== 'owner') {
+            return res.status(404).json({ success: false, message: 'Owner account not found.' });
+        }
+
+        user.fullName = req.body.fullName.trim();
+        user.email = req.body.email.trim().toLowerCase();
+        if (typeof req.body.phone === 'string') user.phone = req.body.phone.trim();
+        if (typeof req.body.address === 'string') user.address = req.body.address.trim();
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Personal information updated successfully.',
+            user: {
+                id: user._id.toString(),
+                fullName: user.fullName,
+                email: user.email,
+                phone: user.phone || '',
+                address: user.address || '',
+                hasProfilePhoto: Boolean(user.profilePhotoFilename && user.profilePhotoContentType)
+            }
+        });
+    } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'That email address is already in use.' });
+        }
+        return next(error);
+    }
+});
+
+// GET /api/owner/pets/:petId/photo
 router.get('/pets/:petId/photo', async (req, res, next) => {
     try {
         if (!mongoose.isValidObjectId(req.params.petId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid pet ID.'
-            });
+            return res.status(400).json({ success: false, message: 'Invalid pet ID.' });
         }
 
         const pet = await Pet.findOne({
             _id: req.params.petId,
             ownerUserId: req.user.id
-        })
-            .select('photoFilename photoContentType')
-            .lean();
+        }).select('photoFilename photoContentType').lean();
 
         if (!pet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Pet not found.'
-            });
+            return res.status(404).json({ success: false, message: 'Pet not found.' });
         }
 
-        if (!pet.photoFilename || !pet.photoContentType) {
-            return res.status(404).json({
-                success: false,
-                message: 'No pet photo is available.'
-            });
+        const filename = pet.photoFilename;
+
+        if (!filename || !pet.photoContentType) {
+            return res.status(404).json({ success: false, message: 'No pet photo is available.' });
         }
 
-        const filename = path.basename(pet.photoFilename);
-
-        if (
-            filename !== pet.photoFilename ||
-            !/^[a-f0-9]{32}\.(jpg|png|webp)$/i.test(filename)
-        ) {
-            return res.status(404).json({
-                success: false,
-                message: 'Pet photo is unavailable.'
-            });
+        // If it's a Cloudinary URL, redirect straight to the image
+        if (filename.startsWith('http')) {
+            return res.redirect(filename);
         }
 
-        const photoPath = path.join(
-            __dirname,
-            '../../uploads/pet-photos',
-            filename
-        );
+        // Legacy fallback for older local images
+        if (!/^[a-f0-9]{32}\.(jpg|png|webp)$/i.test(filename)) {
+            return res.status(404).json({ success: false, message: 'Pet photo is unavailable.' });
+        }
+
+        const photoPath = path.join(__dirname, '../../uploads/pet-photos', filename);
 
         res.set('Content-Type', pet.photoContentType);
         res.set('Cache-Control', 'private, no-store');
         res.set('X-Content-Type-Options', 'nosniff');
 
-                return res.sendFile(photoPath, (error) => {
-            if (error) {
-                if (!res.headersSent) {
-                    // If the image file is missing from the uploads folder, send a 404 instead of a 500 crash
-                    if (error.code === 'ENOENT') {
-                        return res.status(404).json({
-                            success: false,
-                            message: 'Pet photo file is missing from the server.'
-                        });
-                    }
-                    return next(error);
-                }
+        return res.sendFile(photoPath, (error) => {
+            if (error && !res.headersSent) {
+                return res.status(404).json({ success: false, message: 'Pet photo file is missing from the server.' });
             }
         });
     } catch (error) {
@@ -520,182 +318,80 @@ router.get('/pets/:petId/photo', async (req, res, next) => {
 });
 
 // GET /api/owner
-// Verify that the authenticated user can access the owner area.
 router.get('/', (req, res) => {
     return res.status(200).json({
         success: true,
         area: 'owner',
         message: 'Pet owner access verified.',
-        user: {
-            id: req.user.id,
-            fullName: req.user.fullName,
-            role: req.user.role
-        }
+        user: { id: req.user.id, fullName: req.user.fullName, role: req.user.role }
     });
 });
 
 // POST /api/owner/pets
-// Submit a pet registration for veterinary review.
-router.post(
-    '/pets',
-    handlePetPhotoUpload,
-    [
-        body('name')
-            .isString()
-            .withMessage('Pet name is required.')
-            .bail()
-            .trim()
-            .notEmpty()
-            .withMessage('Pet name is required.')
-            .bail()
-            .isLength({ max: 100 })
-            .withMessage('Pet name must not exceed 100 characters.'),
-
-        body('species')
-            .isString()
-            .withMessage('A valid pet species is required.')
-            .bail()
-            .trim()
-            .toLowerCase()
-            .isIn(['dog', 'cat', 'rabbit', 'bird', 'other'])
-            .withMessage(
-                'Species must be dog, cat, rabbit, bird, or other.'
-            ),
-
-        body('breed')
-            .optional()
-            .isString()
-            .withMessage('Breed must be text.')
-            .bail()
-            .trim()
-            .isLength({ max: 100 })
-            .withMessage('Breed must not exceed 100 characters.'),
-
-        body('sex')
-            .optional()
-            .isString()
-            .withMessage('Sex must be male, female, or unknown.')
-            .bail()
-            .trim()
-            .toLowerCase()
-            .isIn(['male', 'female', 'unknown'])
-            .withMessage('Sex must be male, female, or unknown.'),
-
-        body('dateOfBirth')
-            .optional({ values: 'null' })
-            .isISO8601({ strict: true })
-            .withMessage('Date of birth must be a valid YYYY-MM-DD date.')
-            .bail()
-            .custom((value) => {
-                const date = new Date(`${value}T00:00:00.000Z`);
-                const today = new Date();
-                today.setUTCHours(0, 0, 0, 0);
-
-                return date <= today;
-            })
-            .withMessage('Date of birth cannot be in the future.'),
-
-        body('color')
-            .optional()
-            .isString()
-            .withMessage('Color must be text.')
-            .bail()
-            .trim()
-            .isLength({ max: 100 })
-            .withMessage('Color must not exceed 100 characters.')
-    ],
-    async (req, res, next) => {
-        const errors = validationResult(req);
-
-        if (!errors.isEmpty()) {
-                if (req.file) {
-                    fs.unlink(req.file.path, () => {});
-                }
-                
-            return res.status(400).json({
-                success: false,
-                message: 'Please correct the pet registration details.',
-                errors: errors.array().map((error) => ({
-                    field: error.path,
-                    message: error.msg
-                }))
-            });
-        }
-
-        try {
-            const petData = {
-                // Always use the authenticated user's ID.
-                ownerUserId: req.user.id,
-                name: req.body.name.trim(),
-                species: req.body.species.trim().toLowerCase(),
-                registrationStatus: 'pending'
-            };
-
-            if (req.file) {
-                petData.photoFilename = req.file.filename;
-                petData.photoContentType = req.file.mimetype;
-                petData.photoOriginalName = path.basename(req.file.originalname)
-                    .replace(/[\\/:*?"<>|]/g, '_')
-                    .slice(0, 255);
-                petData.photoSize = req.file.size;
-            }
-
-            if (req.body.breed !== undefined) {
-                petData.breed = req.body.breed.trim();
-            }
-
-            if (req.body.sex !== undefined) {
-                petData.sex = req.body.sex.trim().toLowerCase();
-            }
-
-            if (req.body.dateOfBirth !== undefined) {
-                petData.dateOfBirth = new Date(
-                    `${req.body.dateOfBirth}T00:00:00.000Z`
-                );
-            }
-
-            if (req.body.color !== undefined) {
-                petData.color = req.body.color.trim();
-            }
-
-            const pet = await Pet.create(petData);
-
-            return res.status(201).json({
-                success: true,
-                message: 'Pet registration submitted for veterinary review.',
-                pet: {
-                    id: pet._id.toString(),
-                    name: pet.name,
-                    species: pet.species,
-                    breed: pet.breed,
-                    sex: pet.sex,
-                    dateOfBirth: pet.dateOfBirth || null,
-                    color: pet.color,
-                    registrationStatus: pet.registrationStatus,
-                    createdAt: pet.createdAt
-                }
-            });
-        } catch (error) {
-            if (req.file) {
-                fs.unlink(req.file.path, () => {});
-            }
-
-            return next(error);
-        }
+router.post('/pets', handlePetPhotoUpload, [
+    body('name').isString().trim().notEmpty().isLength({ max: 100 }),
+    body('species').isString().trim().toLowerCase().isIn(['dog', 'cat', 'rabbit', 'bird', 'other']),
+    body('breed').optional().isString().trim().isLength({ max: 100 }),
+    body('sex').optional().isString().trim().toLowerCase().isIn(['male', 'female', 'unknown']),
+    body('dateOfBirth').optional({ values: 'null' }).isISO8601({ strict: true }),
+    body('color').optional().isString().trim().isLength({ max: 100 })
+], async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            success: false,
+            message: 'Please correct the pet registration details.',
+            errors: errors.array().map((error) => ({ field: error.path, message: error.msg }))
+        });
     }
-);
+
+    try {
+        const petData = {
+            ownerUserId: req.user.id,
+            name: req.body.name.trim(),
+            species: req.body.species.trim().toLowerCase(),
+            registrationStatus: 'pending'
+        };
+
+        if (req.file) {
+            petData.photoFilename = req.file.path; // Cloudinary URL
+            petData.photoContentType = req.file.mimetype;
+            petData.photoOriginalName = path.basename(req.file.originalname).slice(0, 255);
+            petData.photoSize = req.file.size;
+        }
+
+        if (req.body.breed !== undefined) petData.breed = req.body.breed.trim();
+        if (req.body.sex !== undefined) petData.sex = req.body.sex.trim().toLowerCase();
+        if (req.body.dateOfBirth !== undefined) petData.dateOfBirth = new Date(`${req.body.dateOfBirth}T00:00:00.000Z`);
+        if (req.body.color !== undefined) petData.color = req.body.color.trim();
+
+        const pet = await Pet.create(petData);
+
+        return res.status(201).json({
+            success: true,
+            message: 'Pet registration submitted for veterinary review.',
+            pet: {
+                id: pet._id.toString(),
+                name: pet.name,
+                species: pet.species,
+                breed: pet.breed,
+                sex: pet.sex,
+                dateOfBirth: pet.dateOfBirth || null,
+                color: pet.color,
+                registrationStatus: pet.registrationStatus,
+                createdAt: pet.createdAt
+            }
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
 
 // GET /api/owner/pets
-// Return only pets belonging to the authenticated owner.
-
 router.get('/pets', async (req, res, next) => {
     try {
-        const pets = await Pet.find({
-            ownerUserId: req.user.id
-        })
-            .select(
-                'petCode name species breed sex dateOfBirth color photoFilename photoContentType registrationStatus createdAt'
-            )
+        const pets = await Pet.find({ ownerUserId: req.user.id })
+            .select('petCode name species breed sex dateOfBirth color photoFilename photoContentType registrationStatus createdAt')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -712,12 +408,7 @@ router.get('/pets', async (req, res, next) => {
                 color: pet.color,
                 hasPhoto: Boolean(pet.photoFilename && pet.photoContentType),
                 registrationStatus: pet.registrationStatus,
-
-                // Show the official Pet ID only after approval.
-                ...(pet.registrationStatus === 'approved' && pet.petCode
-                    ? { petCode: pet.petCode }
-                    : {}),
-
+                ...(pet.registrationStatus === 'approved' && pet.petCode ? { petCode: pet.petCode } : {}),
                 createdAt: pet.createdAt
             }))
         });
@@ -726,40 +417,22 @@ router.get('/pets', async (req, res, next) => {
     }
 });
 
-
-
-/**
- * GET /api/owner/pets/qr/:identifier
- * Retrieve an approved pet only if it belongs to the logged-in owner.
- */
+// GET /api/owner/pets/qr/:identifier
 router.get('/pets/qr/:identifier', async (req, res, next) => {
     const identifier = req.params.identifier;
-
     if (!/^[a-fA-F0-9]{64}$/.test(identifier)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid QR identifier format.'
-        });
+        return res.status(400).json({ success: false, message: 'Invalid QR identifier format.' });
     }
-
     try {
         const pet = await Pet.findOne({
             qrIdentifier: identifier.toLowerCase(),
             ownerUserId: req.user.id,
             registrationStatus: 'approved'
-        })
-            .select(
-                'petCode name species breed sex dateOfBirth color registrationStatus verifiedAt'
-            )
-            .lean();
+        }).select('petCode name species breed sex dateOfBirth color registrationStatus verifiedAt').lean();
 
         if (!pet) {
-            return res.status(404).json({
-                success: false,
-                message: 'No approved pet was found for this QR code.'
-            });
+            return res.status(404).json({ success: false, message: 'No approved pet was found for this QR code.' });
         }
-
         return res.status(200).json({
             success: true,
             pet: {
@@ -780,51 +453,31 @@ router.get('/pets/qr/:identifier', async (req, res, next) => {
     }
 });
 
-
-/**
- * GET /api/owner/pets/:petId/qr-image
- * Generate a QR image for an approved pet belonging to the logged-in owner.
- */
+// GET /api/owner/pets/:petId/qr-image
 router.get('/pets/:petId/qr-image', async (req, res, next) => {
     const { petId } = req.params;
-
     if (!mongoose.isValidObjectId(petId)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid pet ID.'
-        });
+        return res.status(400).json({ success: false, message: 'Invalid pet ID.' });
     }
-
     try {
         const pet = await Pet.findOne({
             _id: petId,
             ownerUserId: req.user.id,
             registrationStatus: 'approved'
-        })
-            .select('+qrIdentifier petCode name species')
-            .lean();
+        }).select('+qrIdentifier petCode name species').lean();
 
         if (!pet || !pet.qrIdentifier || !pet.petCode) {
-            return res.status(404).json({
-                success: false,
-                message: 'No approved pet with a QR code was found.'
-            });
+            return res.status(404).json({ success: false, message: 'No approved pet with a QR code was found.' });
         }
-
         const qrCodeImage = await QRCode.toDataURL(pet.qrIdentifier, {
             errorCorrectionLevel: 'M',
             type: 'image/png',
             margin: 2,
             width: 300
         });
-
         return res.status(200).json({
             success: true,
-            pet: {
-                petCode: pet.petCode,
-                name: pet.name,
-                species: pet.species
-            },
+            pet: { petCode: pet.petCode, name: pet.name, species: pet.species },
             qrCodeImage
         });
     } catch (error) {
@@ -832,42 +485,23 @@ router.get('/pets/:petId/qr-image', async (req, res, next) => {
     }
 });
 
-
-/**
- * GET /api/owner/pets/:petId/vaccinations
- * View vaccination history for an approved pet owned by the logged-in owner.
- */
+// GET /api/owner/pets/:petId/vaccinations
 router.get('/pets/:petId/vaccinations', async (req, res, next) => {
     const { petId } = req.params;
-
     if (!mongoose.isValidObjectId(petId)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid pet ID.'
-        });
+        return res.status(400).json({ success: false, message: 'Invalid pet ID.' });
     }
-
     try {
         const pet = await Pet.findOne({
             _id: petId,
             ownerUserId: req.user.id,
             registrationStatus: 'approved'
-        })
-            .select(
-                'petCode name species breed sex dateOfBirth color registrationStatus verifiedAt'
-            )
-            .lean();
+        }).select('petCode name species breed sex dateOfBirth color registrationStatus verifiedAt').lean();
 
         if (!pet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Approved pet not found in your account.'
-            });
+            return res.status(404).json({ success: false, message: 'Approved pet not found in your account.' });
         }
-
-        const records = await VaccinationRecord.find({
-            petId: pet._id
-        })
+        const records = await VaccinationRecord.find({ petId: pet._id })
             .populate('administeredBy', 'fullName')
             .sort({ administeredDate: -1, createdAt: -1 })
             .lean();
@@ -896,9 +530,7 @@ router.get('/pets/:petId/vaccinations', async (req, res, next) => {
                 manufacturer: record.manufacturer,
                 dosage: record.dosage,
                 notes: record.notes,
-                administeredBy: record.administeredBy
-                    ? record.administeredBy.fullName
-                    : 'Unknown',
+                administeredBy: record.administeredBy ? record.administeredBy.fullName : 'Unknown',
                 createdAt: record.createdAt
             }))
         });
@@ -908,106 +540,59 @@ router.get('/pets/:petId/vaccinations', async (req, res, next) => {
 });
 
 // GET /api/owner/feeding-events
-// Retrieve feeding history only for pets belonging to the logged-in owner.
 router.get('/feeding-events', async (req, res, next) => {
     try {
-        const allowedStatuses = [
-            'running',
-            'completed',
-            'failed',
-            'cancelled'
-        ];
-
-        const ownedPets = await Pet.find({
-            ownerUserId: req.user.id
-        })
-            .select('_id name species petCode registrationStatus')
-            .lean();
-
+        const allowedStatuses = ['running', 'completed', 'failed', 'cancelled'];
+        const ownedPets = await Pet.find({ ownerUserId: req.user.id })
+            .select('_id name species petCode registrationStatus').lean();
         const ownedPetIds = ownedPets.map((pet) => pet._id);
-
-        const filter = {
-            petId: { $in: ownedPetIds }
-        };
+        const filter = { petId: { $in: ownedPetIds } };
 
         if (req.query.petId !== undefined) {
-            if (
-                typeof req.query.petId !== 'string' ||
-                !mongoose.isValidObjectId(req.query.petId)
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'A valid pet ID is required.'
-                });
+            if (typeof req.query.petId !== 'string' || !mongoose.isValidObjectId(req.query.petId)) {
+                return res.status(400).json({ success: false, message: 'A valid pet ID is required.' });
             }
-
-            const selectedPet = ownedPets.find(
-                (pet) => pet._id.toString() === req.query.petId
-            );
-
+            const selectedPet = ownedPets.find((pet) => pet._id.toString() === req.query.petId);
             if (!selectedPet) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Pet not found in your account.'
-                });
+                return res.status(404).json({ success: false, message: 'Pet not found in your account.' });
             }
-
             filter.petId = selectedPet._id;
         }
 
         if (req.query.status !== undefined) {
-            if (
-                typeof req.query.status !== 'string' ||
-                !allowedStatuses.includes(req.query.status)
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid feeding event status.'
-                });
+            if (typeof req.query.status !== 'string' || !allowedStatuses.includes(req.query.status)) {
+                return res.status(400).json({ success: false, message: 'Invalid feeding event status.' });
             }
-
             filter.status = req.query.status;
         }
 
         const records = await FeedingEvent.find(filter)
-            .populate(
-                'petId',
-                'name species petCode registrationStatus'
-            )
+            .populate('petId', 'name species petCode registrationStatus')
             .sort({ startedAt: -1 })
             .limit(200)
             .lean();
 
-        const events = records.map((event) => ({
-            id: event._id.toString(),
-            eventId: event.eventId,
-
-            pet: event.petId
-                ? {
+        return res.status(200).json({
+            success: true,
+            count: records.length,
+            events: records.map((event) => ({
+                id: event._id.toString(),
+                eventId: event.eventId,
+                pet: event.petId ? {
                     id: event.petId._id.toString(),
                     name: event.petId.name,
                     species: event.petId.species,
-                    petCode:
-                        event.petId.registrationStatus === 'approved'
-                            ? event.petId.petCode
-                            : undefined
-                }
-                : null,
-
-            source: event.source,
-            status: event.status,
-            requestedGrams: event.requestedGrams,
-            dispensedGrams: event.dispensedGrams,
-            startedAt: event.startedAt,
-            completedAt: event.completedAt,
-            failureReason: event.failureReason,
-            createdAt: event.createdAt
-        }));
-
-        return res.status(200).json({
-            success: true,
-            count: events.length,
-            events
+                    petCode: event.petId.registrationStatus === 'approved' ? event.petId.petCode : undefined
+                } : null,
+                source: event.source,
+                status: event.status,
+                requestedGrams: event.requestedGrams,
+                dispensedGrams: event.dispensedGrams,
+                startedAt: event.startedAt,
+                completedAt: event.completedAt,
+                failureReason: event.failureReason,
+                createdAt: event.createdAt
+            }))
         });
     } catch (error) {
         return next(error);
@@ -1015,65 +600,32 @@ router.get('/feeding-events', async (req, res, next) => {
 });
 
 // GET /api/owner/activity-records
-// Owners can view activity records only for their own pets.
 router.get('/activity-records', async (req, res, next) => {
     try {
-        const allowedActivities = [
-            'walking',
-            'running',
-            'resting',
-            'sleeping',
-            'inactive',
-            'unknown'
-        ];
-
+        const allowedActivities = ['walking', 'running', 'resting', 'sleeping', 'inactive', 'unknown'];
         const { petId, activity } = req.query;
 
         if (petId && !mongoose.isValidObjectId(petId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid pet ID.'
-            });
+            return res.status(400).json({ success: false, message: 'Invalid pet ID.' });
         }
-
         if (activity && !allowedActivities.includes(activity)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid activity classification.'
-            });
+            return res.status(400).json({ success: false, message: 'Invalid activity classification.' });
         }
 
-        // Find only pets owned by the authenticated owner.
-        const ownedPets = await Pet.find({
-            ownerUserId: req.user.id
-        })
-            .select('_id')
-            .lean();
-
+        const ownedPets = await Pet.find({ ownerUserId: req.user.id }).select('_id').lean();
         const ownedPetIds = ownedPets.map((pet) => pet._id);
 
         if (petId) {
-            const ownsPet = ownedPetIds.some(
-                (id) => id.toString() === petId
-            );
-
+            const ownsPet = ownedPetIds.some((id) => id.toString() === petId);
             if (!ownsPet) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Pet not found.'
-                });
+                return res.status(404).json({ success: false, message: 'Pet not found.' });
             }
         }
 
         const filter = {
-            petId: petId
-                ? new mongoose.Types.ObjectId(petId)
-                : { $in: ownedPetIds }
+            petId: petId ? new mongoose.Types.ObjectId(petId) : { $in: ownedPetIds }
         };
-
-        if (activity) {
-            filter.activity = activity;
-        }
+        if (activity) filter.activity = activity;
 
         const records = await ActivityRecord.find(filter)
             .populate('petId', 'name species petCode')
@@ -1087,21 +639,17 @@ router.get('/activity-records', async (req, res, next) => {
             count: records.length,
             records: records.map((record) => ({
                 id: record._id.toString(),
-                pet: record.petId
-                    ? {
-                        id: record.petId._id.toString(),
-                        name: record.petId.name,
-                        species: record.petId.species,
-                        petCode: record.petId.petCode || null
-                    }
-                    : null,
-                device: record.deviceId
-                    ? {
-                        id: record.deviceId._id.toString(),
-                        deviceCode: record.deviceId.deviceCode,
-                        deviceType: record.deviceId.deviceType
-                    }
-                    : null,
+                pet: record.petId ? {
+                    id: record.petId._id.toString(),
+                    name: record.petId.name,
+                    species: record.petId.species,
+                    petCode: record.petId.petCode || null
+                } : null,
+                device: record.deviceId ? {
+                    id: record.deviceId._id.toString(),
+                    deviceCode: record.deviceId.deviceCode,
+                    deviceType: record.deviceId.deviceType
+                } : null,
                 activity: record.activity,
                 measuredAt: record.measuredAt,
                 durationSeconds: record.durationSeconds ?? null,
@@ -1114,28 +662,17 @@ router.get('/activity-records', async (req, res, next) => {
     }
 });
 
-/**
- * GET /api/owner/notifications
- * Retrieve notifications belonging only to the logged-in owner.
- */
+// GET /api/owner/notifications
 router.get('/notifications', async (req, res, next) => {
     try {
         const [notifications, unreadCount] = await Promise.all([
-            Notification.find({
-                userId: req.user.id
-            })
-                .select(
-                    'type title message petId relatedRecordType relatedRecordId priority readAt createdAt'
-                )
+            Notification.find({ userId: req.user.id })
+                .select('type title message petId relatedRecordType relatedRecordId priority readAt createdAt')
                 .populate('petId', 'name petCode')
                 .sort({ createdAt: -1 })
                 .limit(50)
                 .lean(),
-
-            Notification.countDocuments({
-                userId: req.user.id,
-                readAt: null
-            })
+            Notification.countDocuments({ userId: req.user.id, readAt: null })
         ]);
 
         return res.status(200).json({
@@ -1151,18 +688,12 @@ router.get('/notifications', async (req, res, next) => {
                 read: Boolean(notification.readAt),
                 readAt: notification.readAt || null,
                 createdAt: notification.createdAt,
-                pet: notification.petId
-                    ? {
-                        name: notification.petId.name,
-                        petCode: notification.petId.petCode
-                    }
-                    : null,
-                relatedRecordType:
-                    notification.relatedRecordType || null,
-                relatedRecordId:
-                    notification.relatedRecordId
-                        ? notification.relatedRecordId.toString()
-                        : null
+                pet: notification.petId ? {
+                    name: notification.petId.name,
+                    petCode: notification.petId.petCode
+                } : null,
+                relatedRecordType: notification.relatedRecordType || null,
+                relatedRecordId: notification.relatedRecordId ? notification.relatedRecordId.toString() : null
             }))
         });
     } catch (error) {
@@ -1170,55 +701,29 @@ router.get('/notifications', async (req, res, next) => {
     }
 });
 
-/**
- * PATCH /api/owner/notifications/:notificationId/read
- * Mark one notification belonging to the logged-in owner as read.
- */
-router.patch(
-    '/notifications/:notificationId/read',
-    async (req, res, next) => {
-        const { notificationId } = req.params;
-
-        if (!mongoose.isValidObjectId(notificationId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid notification ID.'
-            });
-        }
-
-        try {
-            const notification = await Notification.findOne({
-                _id: notificationId,
-                userId: req.user.id
-            });
-
-            if (!notification) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Notification not found.'
-                });
-            }
-
-            if (!notification.readAt) {
-                notification.readAt = new Date();
-                await notification.save();
-            }
-
-            return res.status(200).json({
-                success: true,
-                message: 'Notification marked as read.',
-                notification: {
-                    id: notification._id.toString(),
-                    read: true,
-                    readAt: notification.readAt
-                }
-            });
-        } catch (error) {
-            return next(error);
-        }
+// PATCH /api/owner/notifications/:notificationId/read
+router.patch('/notifications/:notificationId/read', async (req, res, next) => {
+    const { notificationId } = req.params;
+    if (!mongoose.isValidObjectId(notificationId)) {
+        return res.status(400).json({ success: false, message: 'Invalid notification ID.' });
     }
-);
-
-
+    try {
+        const notification = await Notification.findOne({ _id: notificationId, userId: req.user.id });
+        if (!notification) {
+            return res.status(404).json({ success: false, message: 'Notification not found.' });
+        }
+        if (!notification.readAt) {
+            notification.readAt = new Date();
+            await notification.save();
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Notification marked as read.',
+            notification: { id: notification._id.toString(), read: true, readAt: notification.readAt }
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
 
 module.exports = router;
