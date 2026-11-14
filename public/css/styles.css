@@ -388,3 +388,30 @@ a {
             inset 0 2px 4px rgba(255, 255, 255, 0.6),
             0 4px 10px rgba(35, 82, 130, 0.15);
     }
+
+    /* ==========================================
+   ANDROID DOWNLOAD BUTTON STYLES
+   ========================================== */
+.download-app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    margin-right: 10px; /* Creates space between this button and the Log in button */
+    background-color: #ffffff;
+    color: #2389e0; /* SmartVet blue */
+    border: 2px solid #2389e0;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.download-app-btn:hover {
+    background-color: #2389e0;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(35, 137, 224, 0.25);
+}
