@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema(
         profilePhotoFilename: {
             type: String,
             default: '',
-            maxlength: 100
+            maxlength: 500
         },
 
         profilePhotoContentType: {

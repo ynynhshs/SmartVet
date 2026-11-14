@@ -72,7 +72,8 @@ const petSchema = new mongoose.Schema(
         photoFilename: {
             type: String,
             trim: true,
-            default: undefined
+            default: undefined,
+            maxlength: 500
         },
 
         photoContentType: {

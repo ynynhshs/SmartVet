@@ -24,6 +24,7 @@ const feedingEventRoutes = require('./src/routes/feedingEventRoutes');
 const iotRoutes = require('./src/routes/iotRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = Number(process.env.PORT) || 3000;
 
 const uploadDirs = ['uploads/pet-photos', 'uploads/profile-photos'];
@@ -36,10 +37,13 @@ uploadDirs.forEach(dir => {
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            imgSrc: ["'self'", "data:", "blob:"]
+            defaultSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+            connectSrc: ["'self'", "https://res.cloudinary.com"]
         }
     }
 }));
+
 app.use(express.json({ limit: '10kb' }));
 
 // Authentication endpoints.

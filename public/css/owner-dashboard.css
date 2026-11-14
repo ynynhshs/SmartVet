@@ -1673,3 +1673,7 @@ body.theme-transitioning * {
         border: 1px solid #fff !important; /* Adds a nice pop */
     }
 }
+
+.account-photo-preview-box[hidden] {
+    display: none !important;
+}
