@@ -20,8 +20,9 @@ android {
         applicationId 'com.smartvet.vetcare'
         minSdk 23
         targetSdk 34
-        versionCode (findProperty('appVersionCode') ?: '1').toInteger()
-        versionName findProperty('appVersionName') ?: '1.0.0'
+        // Use project.hasProperty to safely check for the property before calling toInteger()
+        versionCode project.hasProperty('appVersionCode') ? project.property('appVersionCode').toInteger() : 1
+        versionName project.hasProperty('appVersionName') ? project.property('appVersionName') : '1.0.0'
         buildConfigField 'String', 'SMARTVET_BASE_URL', "\"${escapedBaseUrl}\""
     }
 
