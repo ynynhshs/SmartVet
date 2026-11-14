@@ -1081,20 +1081,38 @@ if (applyOwnerFeedingFiltersButton) {
 }
 
 
-/* Sidebar collapse/expand */
+/* Sidebar navigation and desktop collapse */
 (function initializeOwnerSidebarToggle() {
     const shell = document.querySelector('.owner-shell');
     const toggle = document.getElementById('ownerSidebarToggle');
+    const mobileToggle = document.getElementById('ownerSidebarOpen');
+    const mobileClose = document.getElementById('ownerSidebarClose');
+    const backdrop = document.getElementById('ownerSidebarBackdrop');
+    const mobileQuery = window.matchMedia('(max-width: 760px)');
 
-    if (!shell || !toggle) return;
+    if (!shell || !toggle || !mobileToggle || !mobileClose || !backdrop) return;
 
     const storageKey = 'smartvetOwnerSidebarCollapsed';
 
+    function setMobileSidebarOpen(open, restoreFocus = false) {
+        shell.classList.toggle('sidebar-open', open);
+        document.body.classList.toggle('sidebar-open', open);
+        mobileToggle.setAttribute('aria-expanded', String(open));
+        backdrop.hidden = !open;
+
+        if (open) {
+            mobileClose.focus();
+        } else if (restoreFocus) {
+            mobileToggle.focus();
+        }
+    }
+
     function applyCollapsedState(collapsed) {
-        shell.classList.toggle('sidebar-collapsed', collapsed);
+        const isMobile = mobileQuery.matches;
+        shell.classList.toggle('sidebar-collapsed', !isMobile && collapsed);
 
         const action = collapsed ? 'Expand' : 'Collapse';
-        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.setAttribute('aria-expanded', String(!isMobile && !collapsed));
         toggle.setAttribute('aria-label', `${action} sidebar`);
         toggle.title = `${action} sidebar`;
     }
@@ -1104,10 +1122,38 @@ if (applyOwnerFeedingFiltersButton) {
     );
 
     toggle.addEventListener('click', () => {
+        if (mobileQuery.matches) {
+            setMobileSidebarOpen(false, true);
+            return;
+        }
+
         const collapsed = !shell.classList.contains('sidebar-collapsed');
 
         applyCollapsedState(collapsed);
         localStorage.setItem(storageKey, String(collapsed));
+    });
+
+    mobileToggle.addEventListener('click', () => setMobileSidebarOpen(true));
+    mobileClose.addEventListener('click', () => setMobileSidebarOpen(false, true));
+    backdrop.addEventListener('click', () => setMobileSidebarOpen(false, true));
+
+    document.querySelectorAll('.nav-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            if (mobileQuery.matches) {
+                setMobileSidebarOpen(false, true);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && shell.classList.contains('sidebar-open')) {
+            setMobileSidebarOpen(false, true);
+        }
+    });
+
+    mobileQuery.addEventListener('change', () => {
+        setMobileSidebarOpen(false);
+        applyCollapsedState(localStorage.getItem(storageKey) === 'true');
     });
 })();
 
@@ -1370,21 +1416,5 @@ if (accountProfileForm) {
     });
 }
 
-
-/* =========================================================
-   Mobile Sidebar Toggle Logic
-   ========================================================= */
-document.addEventListener('DOMContentLoaded', () => {
-    const sidebar = document.querySelector('.owner-sidebar');
-    const toggleBtn = document.querySelector('.sidebar-toggle');
-
-    if (sidebar && toggleBtn) {
-        toggleBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            // This adds or removes the 'open' class, which triggers the CSS animation
-            sidebar.classList.toggle('open');
-        });
-    }
-});
 
 verifyOwner();

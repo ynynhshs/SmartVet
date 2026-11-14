@@ -24,23 +24,40 @@
                 Log out
             </button>
         </div>
+
+        <button
+            type="button"
+            class="mobile-menu-toggle"
+            id="ownerSidebarOpen"
+            aria-label="Open navigation"
+            aria-controls="ownerSidebar"
+            aria-expanded="false">
+            <span aria-hidden="true">☰</span>
+        </button>
     </header>
 
     <div class="owner-shell">
         <!-- Sidebar Navigation -->
-        <aside class="owner-sidebar">
-                        <div class="sidebar-topbar">
-                            <span class="sidebar-brand-mark" aria-hidden="true">SV</span>
-                            <button
-                                type="button"
-                                class="sidebar-toggle"
-                                id="ownerSidebarToggle"
-                                aria-label="Collapse sidebar"
-                                aria-expanded="true"
-                                title="Collapse sidebar">
-                                <span aria-hidden="true">☰</span>
-                            </button>
-                        </div>
+        <aside class="owner-sidebar" id="ownerSidebar">
+            <div class="sidebar-topbar">
+                <span class="sidebar-brand-mark" aria-hidden="true">SV</span>
+                <button
+                    type="button"
+                    class="mobile-sidebar-close"
+                    id="ownerSidebarClose"
+                    aria-label="Close navigation">
+                    <span aria-hidden="true">×</span>
+                </button>
+                <button
+                    type="button"
+                    class="sidebar-toggle"
+                    id="ownerSidebarToggle"
+                    aria-label="Collapse sidebar"
+                    aria-expanded="true"
+                    title="Collapse sidebar">
+                    <span aria-hidden="true">☰</span>
+                </button>
+            </div>
             <div class="sidebar-heading">
                 <span class="sidebar-eyebrow">PET OWNER PORTAL</span>
                 <h2>Owner Workspace</h2>
@@ -52,6 +69,7 @@
                     type="button"
                     class="nav-item active"
                     data-view="overview"
+                    aria-label="Overview"
                     aria-current="page">
                     <span class="nav-icon" aria-hidden="true">⌂</span>
                     <span>Overview</span>
@@ -60,7 +78,8 @@
                 <button
                     type="button"
                     class="nav-item"
-                    data-view="register">
+                    data-view="register"
+                    aria-label="Register a Pet">
                     <span class="nav-icon" aria-hidden="true">✚</span>
                     <span>Register a Pet</span>
                 </button>
@@ -68,7 +87,8 @@
                 <button
                     type="button"
                     class="nav-item"
-                    data-view="mypets">
+                    data-view="mypets"
+                    aria-label="My Registered Pets">
                     <span class="nav-icon" aria-hidden="true">🐾</span>
                     <span>My Registered Pets</span>
                     <span class="nav-count" id="sidebarPetsCount">—</span>
@@ -78,7 +98,8 @@
                 <button
                     type="button"
                     class="nav-item"
-                    data-view="feeding">
+                    data-view="feeding"
+                    aria-label="Feeding History">
                     <span class="nav-icon" aria-hidden="true">🍽️</span>
                     <span>Feeding History</span>
                 </button>
@@ -86,7 +107,8 @@
                 <button
                     type="button"
                     class="nav-item"
-                    data-view="activity">
+                    data-view="activity"
+                    aria-label="Activity Monitoring">
                     <span class="nav-icon" aria-hidden="true">🐾</span>
                     <span>Activity Monitoring</span>
                 </button>
@@ -95,7 +117,8 @@
                 <button
                     type="button"
                     class="nav-item"
-                    data-view="notifications">
+                    data-view="notifications"
+                    aria-label="Notifications">
                     <span class="nav-icon" aria-hidden="true">🔔</span>
                     <span>Notifications</span>
                     <span class="nav-count" id="sidebarUnreadCount">—</span>
@@ -104,7 +127,8 @@
                 <button
                     type="button"
                     class="nav-item"
-                    data-view="account">
+                    data-view="account"
+                    aria-label="My Account">
                     <span class="nav-icon" aria-hidden="true">👤</span>
                     <span>My Account</span>
                 </button>
@@ -123,6 +147,12 @@
                 </button>
             </div>
         </aside>
+        <button
+            type="button"
+            class="sidebar-backdrop"
+            id="ownerSidebarBackdrop"
+            aria-label="Close navigation"
+            hidden></button>
 
         <!-- Main Workspace Area -->
         <main class="owner-main">
