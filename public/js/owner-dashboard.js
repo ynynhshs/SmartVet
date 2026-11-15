@@ -273,12 +273,22 @@ function createPetCard(pet) {
             : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    function addVaccinationDetail(parent, label, value) {
+        function addVaccinationDetail(parent, label, value, isDate = false) {
         const paragraph = document.createElement('p');
-        paragraph.textContent = `${label}: ${value || 'Not provided'}`;
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.innerHTML = `<strong>${label}:</strong>`;
+        
+        const valueSpan = document.createElement('span');
+        if (isDate && value && value !== 'Not recorded' && value !== 'Not available') {
+            valueSpan.className = 'vaccine-date-highlight';
+        }
+        valueSpan.textContent = value || 'Not provided';
+        
+        paragraph.appendChild(labelSpan);
+        paragraph.appendChild(valueSpan);
         parent.appendChild(paragraph);
     }
-
     async function loadOwnerVaccinationCard(petId, container) {
         // Replaced text loader with Skeleton Loader
         container.replaceChildren(createSkeletonLoader(1));
@@ -317,8 +327,10 @@ function createPetCard(pet) {
                 vaccineHeading.textContent = record.vaccineName || 'Unnamed vaccine';
                 entry.appendChild(vaccineHeading);
 
-                addVaccinationDetail(entry, 'Date administered', formatVaccinationDate(record.administeredDate));
-                addVaccinationDetail(entry, 'Next due date', formatVaccinationDate(record.nextDueDate));
+                                addVaccinationDetail(entry, 'Date administered', formatVaccinationDate(record.administeredDate), true);
+                addVaccinationDetail(entry, 'Next due date', formatVaccinationDate(record.nextDueDate), true);
+                
+                // Leave the rest exactly as they are (without the 'true'):
                 addVaccinationDetail(entry, 'Manufacturer', record.manufacturer);
                 addVaccinationDetail(entry, 'Batch / lot number', record.batchNumber);
                 addVaccinationDetail(entry, 'Dosage', record.dosage);

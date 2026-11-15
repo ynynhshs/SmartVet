@@ -2448,3 +2448,86 @@ body[data-theme="dark"] .sv-skeleton {
     rgba(255, 255, 255, 0.05) 80px
   );
 }
+
+/* ==========================================
+   VACCINATION CARD READABILITY & HIGHLIGHTS
+   ========================================== */
+.owner-vaccination-card {
+    background: var(--clay-surface-card);
+    padding: 20px;
+    border-radius: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+.owner-vaccination-entry {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 12px;
+}
+
+.owner-vaccination-entry h5 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--clay-blue);
+    margin-bottom: 10px;
+    border-bottom: 2px solid rgba(35, 137, 224, 0.1);
+    padding-bottom: 8px;
+}
+
+.owner-vaccination-entry p {
+    font-size: 0.9rem;
+    margin: 8px 0;
+    color: var(--clay-text);
+    line-height: 1.5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.owner-vaccination-entry p strong {
+    font-weight: 700;
+    color: var(--clay-heading);
+}
+
+/* The Date Highlight Badge */
+.vaccine-date-highlight {
+    background-color: #ffe396;
+    color: #614400;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-weight: 900;
+    font-size: 0.85rem;
+    display: inline-block;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Dark Mode Overrides */
+body[data-theme="dark"] .owner-vaccination-card {
+    background: var(--clay-surface-card);
+    border-color: #2b3d53;
+}
+
+body[data-theme="dark"] .owner-vaccination-entry {
+    background: #1a2b42;
+    border-color: #2b3d53;
+}
+
+body[data-theme="dark"] .owner-vaccination-entry h5 {
+    color: #83c3ff;
+    border-bottom-color: rgba(131, 195, 255, 0.2);
+}
+
+body[data-theme="dark"] .owner-vaccination-entry p {
+    color: var(--clay-text);
+}
+
+body[data-theme="dark"] .owner-vaccination-entry p strong {
+    color: var(--clay-heading);
+}
+
+body[data-theme="dark"] .vaccine-date-highlight {
+    background-color: #d97706; /* Darker amber for contrast */
+    color: #ffffff;
+}
