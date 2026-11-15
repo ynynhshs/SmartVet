@@ -1726,3 +1726,187 @@ body.theme-transitioning * {
 .account-photo-preview-box[hidden] {
     display: none !important;
 }
+
+/* ==========================================
+   3D FLIP PET CARD STYLES (Fixed Layout + Bold Details)
+   ========================================== */
+.pet-grid {
+    perspective: none;
+    align-items: start;
+}
+
+.flip-card {
+    background-color: transparent;
+    width: 100%;
+    height: 460px;
+    cursor: pointer;
+    position: relative;
+    perspective: 1000px;
+}
+
+.flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.flip-card.is-flipped .flip-card-inner {
+    transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: 22px;
+    box-sizing: border-box;
+    background: var(--clay-surface-card);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: var(--clay-shadow-sm);
+}
+
+/* Front Side */
+.flip-card-front {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow: hidden;
+}
+
+.flip-card-front::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: -50px;
+    width: 200px;
+    height: 200px;
+    background: var(--clay-blue);
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.2;
+    z-index: 0;
+}
+
+.flip-card-front > * {
+    z-index: 1; 
+}
+
+.flip-card-front .registered-pet-photo {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    object-fit: cover;
+    margin-bottom: 20px;
+}
+
+/* Back Side */
+.flip-card-back {
+    transform: rotateY(180deg);
+    padding: 20px;
+    overflow-y: auto;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* --- NEW BOLD DETAILS STYLING --- */
+.flip-card-back h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--clay-heading);
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 900;
+    border-bottom: 2px solid rgba(35, 137, 224, 0.2);
+    padding-bottom: 10px;
+}
+
+.pet-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+}
+
+.detail-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--clay-muted);
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.detail-value {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--clay-heading);
+    text-transform: capitalize;
+}
+
+/* Official ID Highlight */
+.pet-id-wrapper {
+    background: linear-gradient(135deg, rgba(35, 137, 224, 0.15), rgba(35, 137, 224, 0.05));
+    border: 2px solid rgba(35, 137, 224, 0.3);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+.pet-id-wrapper .detail-label {
+    color: var(--clay-blue);
+    margin-bottom: 4px;
+}
+
+.pet-id-value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--clay-blue-dark);
+    letter-spacing: 1.5px;
+}
+
+/* Dark Mode Overrides */
+body[data-theme="dark"] .flip-card-front,
+body[data-theme="dark"] .flip-card-back {
+    background: var(--clay-surface-card);
+    border-color: #2b3d53;
+}
+
+body[data-theme="dark"] .detail-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="dark"] .pet-id-wrapper {
+    background: rgba(35, 137, 224, 0.15);
+    border-color: rgba(35, 137, 224, 0.4);
+}
+
+body[data-theme="dark"] .pet-id-value {
+    color: #83c3ff;
+}

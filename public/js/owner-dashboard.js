@@ -294,88 +294,130 @@ function createPetCard(pet) {
         }
     }
 
-    const card = document.createElement('article');
-    card.className = 'pet-card';
+    // --- BUILD THE 3D FLIP CARD STRUCTURE ---
+    const card = document.createElement('div');
+    card.className = 'flip-card';
 
+    const cardInner = document.createElement('div');
+    cardInner.className = 'flip-card-inner';
+
+    const cardFront = document.createElement('div');
+    cardFront.className = 'flip-card-front';
+
+    const cardBack = document.createElement('div');
+    cardBack.className = 'flip-card-back';
+
+    // --- FRONT OF THE CARD ---
     if (pet.hasPhoto && pet.id) {
-    const photo = document.createElement('img');
+        const photo = document.createElement('img');
+        photo.className = 'registered-pet-photo';
+        photo.alt = `${pet.name || 'Pet'} photo`;
+        photo.loading = 'lazy';
 
-    photo.className = 'registered-pet-photo';
-    photo.alt = `${pet.name || 'Pet'} photo`;
-    photo.loading = 'lazy';
-
-    fetch(`/api/owner/pets/${encodeURIComponent(pet.id)}/photo`, {
-        headers: {
-            Accept: 'image/jpeg, image/png, image/webp',
-            Authorization: `Bearer ${token}`
-        }
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Unable to load pet photo.');
+        fetch(`/api/owner/pets/${encodeURIComponent(pet.id)}/photo`, {
+            headers: {
+                Accept: 'image/jpeg, image/png, image/webp',
+                Authorization: `Bearer ${token}`
             }
-
-            return response.blob();
         })
-        .then(blob => {
-            const imageUrl = URL.createObjectURL(blob);
-            photo.src = imageUrl;
+            .then(response => {
+                if (!response.ok) throw new Error('Unable to load pet photo.');
+                return response.blob();
+            })
+            .then(blob => {
+                const imageUrl = URL.createObjectURL(blob);
+                photo.src = imageUrl;
+                photo.addEventListener('load', () => URL.revokeObjectURL(imageUrl), { once: true });
+            })
+            .catch(() => {
+                photo.alt = 'Pet photo unavailable';
+                photo.classList.add('pet-photo-unavailable');
+            });
 
-            photo.addEventListener('load', () => {
-                URL.revokeObjectURL(imageUrl);
-            }, { once: true });
-        })
-        .catch(() => {
-            photo.alt = 'Pet photo unavailable';
-            photo.classList.add('pet-photo-unavailable');
-        });
-
-    card.appendChild(photo);
-}
+        cardFront.appendChild(photo);
+    }
 
     const name = document.createElement('h3');
     name.textContent = pet.name || 'Unnamed pet';
-
-    const species = document.createElement('p');
-    species.textContent = `Species: ${pet.species || 'Not specified'}`;
-
-    const breed = document.createElement('p');
-    breed.textContent = `Breed: ${pet.breed || 'Not specified'}`;
-
-    const sex = document.createElement('p');
-    sex.textContent = `Sex: ${pet.sex || 'Unknown'}`;
-
-    const color = document.createElement('p');
-    color.textContent = `Color: ${pet.color || 'Not specified'}`;
-
-    card.append(name, species, breed, sex, color);
-
-    if (pet.dateOfBirth) {
-        const birthDate = document.createElement('p');
-        birthDate.textContent = `Date of birth: ${pet.dateOfBirth.slice(0, 10)}`;
-        card.appendChild(birthDate);
-    }
+    cardFront.appendChild(name);
 
     const status = document.createElement('span');
     status.className = `pet-status ${pet.registrationStatus || ''}`;
     status.textContent = readableStatus(pet.registrationStatus);
-    card.appendChild(status);
+    cardFront.appendChild(status);
+
+    const tapHint = document.createElement('p');
+    tapHint.className = 'muted';
+    tapHint.style.fontSize = '0.8rem';
+    tapHint.style.marginTop = '15px';
+    tapHint.textContent = 'Tap to view details';
+    cardFront.appendChild(tapHint);
+
+    // --- BACK OF THE CARD ---
+    const backTitle = document.createElement('h3');
+    backTitle.textContent = pet.name || 'Unnamed pet';
+    cardBack.appendChild(backTitle);
+
+    const detailsGrid = document.createElement('div');
+    detailsGrid.className = 'pet-details-grid';
+
+    function addDetailItem(label, value) {
+        if (!value) return;
+        const item = document.createElement('div');
+        item.className = 'detail-item';
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'detail-label';
+        labelSpan.textContent = label;
+        
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'detail-value';
+        valueSpan.textContent = value;
+        
+        item.appendChild(labelSpan);
+        item.appendChild(valueSpan);
+        detailsGrid.appendChild(item);
+    }
+
+    addDetailItem('Species', pet.species);
+    addDetailItem('Breed', pet.breed);
+    addDetailItem('Sex', pet.sex);
+    addDetailItem('Color', pet.color);
+    
+    if (pet.dateOfBirth) {
+        addDetailItem('Date of Birth', pet.dateOfBirth.slice(0, 10));
+    }
+
+    cardBack.appendChild(detailsGrid);
 
     if (pet.registrationStatus === 'approved') {
-        const petCode = document.createElement('p');
-        petCode.textContent = pet.petCode ? `Official Pet ID: ${pet.petCode}` : 'Official Pet ID is pending.';
-        card.appendChild(petCode);
+        const petCodeWrapper = document.createElement('div');
+        petCodeWrapper.className = 'pet-id-wrapper';
+
+        const petCodeLabel = document.createElement('span');
+        petCodeLabel.className = 'detail-label';
+        petCodeLabel.textContent = 'Official Pet ID';
+
+        const petCodeValue = document.createElement('strong');
+        petCodeValue.className = 'pet-id-value';
+        petCodeValue.textContent = pet.petCode || 'Pending';
+
+        petCodeWrapper.appendChild(petCodeLabel);
+        petCodeWrapper.appendChild(petCodeValue);
+        cardBack.appendChild(petCodeWrapper);
 
         const vaccinationButton = document.createElement('button');
         vaccinationButton.type = 'button';
         vaccinationButton.className = 'secondary-button vaccination-toggle';
         vaccinationButton.textContent = 'View Digital Vaccination Card';
+        vaccinationButton.style.marginTop = '10px';
 
         const vaccinationContainer = document.createElement('section');
         vaccinationContainer.className = 'owner-vaccination-card';
         vaccinationContainer.hidden = true;
 
-        vaccinationButton.addEventListener('click', async () => {
+        vaccinationButton.addEventListener('click', async (e) => {
+            e.stopPropagation(); 
             if (!vaccinationContainer.hidden) {
                 vaccinationContainer.hidden = true;
                 vaccinationButton.textContent = 'View Digital Vaccination Card';
@@ -392,8 +434,8 @@ function createPetCard(pet) {
             vaccinationButton.disabled = false;
         });
 
-        card.appendChild(vaccinationButton);
-        card.appendChild(vaccinationContainer);
+        cardBack.appendChild(vaccinationButton);
+        cardBack.appendChild(vaccinationContainer);
 
         if (pet.petCode && pet.id) {
             const qrSection = document.createElement('div');
@@ -420,7 +462,8 @@ function createPetCard(pet) {
             downloadButton.disabled = true;
             qrSection.appendChild(downloadButton);
 
-            downloadButton.addEventListener('click', () => {
+            downloadButton.addEventListener('click', (e) => {
+                e.stopPropagation(); 
                 if (!qrImage.src || qrImage.hidden) return;
                 const link = document.createElement('a');
                 link.href = qrImage.src;
@@ -430,7 +473,7 @@ function createPetCard(pet) {
                 link.remove();
             });
 
-            card.appendChild(qrSection);
+            cardBack.appendChild(qrSection);
 
             apiRequest(`/api/owner/pets/${encodeURIComponent(pet.id)}/qr-image`)
                 .then((data) => {
@@ -445,6 +488,18 @@ function createPetCard(pet) {
                 });
         }
     }
+
+    // --- ASSEMBLE AND ADD FLIP LOGIC ---
+    cardInner.appendChild(cardFront);
+    cardInner.appendChild(cardBack);
+    card.appendChild(cardInner);
+
+    card.addEventListener('click', (e) => {
+        if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('img[alt*="QR"]')) {
+            return; 
+        }
+        card.classList.toggle('is-flipped');
+    });
 
     return card;
 }
