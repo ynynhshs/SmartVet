@@ -51,15 +51,15 @@ const overviewUnreadCount = document.getElementById('overviewUnreadCount');
 let ownerVerified = false;
 
 
-
-
-
 // Pet photo selection and local preview.
 const petPhotoInput = document.getElementById('petPhoto');
 const petPhotoPreviewContainer = document.getElementById('petPhotoPreviewContainer');
 const petPhotoPreview = document.getElementById('petPhotoPreview');
 const petPhotoFileName = document.getElementById('petPhotoFileName');
 const removePetPhotoButton = document.getElementById('removePetPhotoButton');
+const petUploadIcon = document.getElementById('petUploadIcon');
+const petUploadText = document.getElementById('petUploadText');
+const uploadStatusBar = document.getElementById('uploadStatusBar');
 let petPhotoPreviewUrl = null;
 
 function clearPetPhotoPreview() {
@@ -70,8 +70,14 @@ function clearPetPhotoPreview() {
     if (petPhotoInput) petPhotoInput.value = '';
     if (petPhotoPreview) petPhotoPreview.removeAttribute('src');
     if (petPhotoFileName) petPhotoFileName.textContent = 'No file chosen';
+    
     if (petPhotoPreviewContainer) petPhotoPreviewContainer.hidden = true;
     if (removePetPhotoButton) removePetPhotoButton.hidden = true;
+    
+    // Reset the UI for the new upload box
+    if (uploadStatusBar) uploadStatusBar.style.display = 'none';
+    if (petUploadIcon) petUploadIcon.style.display = 'flex';
+    if (petUploadText) petUploadText.style.display = 'flex';
 }
 
 if (petPhotoInput && petPhotoPreviewContainer && petPhotoPreview && petPhotoFileName) {
@@ -84,26 +90,45 @@ if (petPhotoInput && petPhotoPreviewContainer && petPhotoPreview && petPhotoFile
         petPhotoPreview.removeAttribute('src');
         petPhotoFileName.textContent = 'No file chosen';
         petPhotoPreviewContainer.hidden = true;
+        
         if (removePetPhotoButton) removePetPhotoButton.hidden = true;
-        if (!file) return;
+
+        if (!file) {
+            if (uploadStatusBar) uploadStatusBar.style.display = 'none';
+            if (petUploadIcon) petUploadIcon.style.display = 'flex';
+            if (petUploadText) petUploadText.style.display = 'flex';
+            return;
+        }
 
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
             petPhotoInput.value = '';
             showMessage(registrationMessage, 'Choose a JPG, PNG, or WebP image.', 'error');
+            if (uploadStatusBar) uploadStatusBar.style.display = 'none';
+            if (petUploadIcon) petUploadIcon.style.display = 'flex';
+            if (petUploadText) petUploadText.style.display = 'flex';
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
             petPhotoInput.value = '';
             showMessage(registrationMessage, 'The pet photo must be 5 MB or smaller.', 'error');
+            if (uploadStatusBar) uploadStatusBar.style.display = 'none';
+            if (petUploadIcon) petUploadIcon.style.display = 'flex';
+            if (petUploadText) petUploadText.style.display = 'flex';
             return;
         }
 
         petPhotoPreviewUrl = URL.createObjectURL(file);
         petPhotoPreview.src = petPhotoPreviewUrl;
         petPhotoFileName.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+        
+        // Show the preview and status bar, hide the icon
         petPhotoPreviewContainer.hidden = false;
         if (removePetPhotoButton) removePetPhotoButton.hidden = false;
+        if (uploadStatusBar) uploadStatusBar.style.display = 'flex';
+        if (petUploadIcon) petUploadIcon.style.display = 'none';
+        if (petUploadText) petUploadText.style.display = 'none';
+        
         showMessage(registrationMessage, '');
     });
 
@@ -165,6 +190,29 @@ function showMessage(element, message, type = '') {
     element.textContent = message;
     element.classList.remove('error', 'success');
     if (type) element.classList.add(type);
+}
+
+// --- NEW SKELETON LOADER FUNCTION ---
+function createSkeletonLoader(count = 3) {
+    const container = document.createElement('div');
+    container.className = 'skeleton-grid';
+
+    for (let i = 0; i < count; i++) {
+        const card = document.createElement('div');
+        card.className = 'sv-skeleton-card';
+        
+        const title = document.createElement('div');
+        title.className = 'sv-skeleton sv-skeleton-title';
+        
+        const desc = document.createElement('div');
+        desc.className = 'sv-skeleton sv-skeleton-desc';
+        
+        card.appendChild(title);
+        card.appendChild(desc);
+        container.appendChild(card);
+    }
+
+    return container;
 }
 
 function logout() {
@@ -232,11 +280,8 @@ function createPetCard(pet) {
     }
 
     async function loadOwnerVaccinationCard(petId, container) {
-        container.replaceChildren();
-        const loading = document.createElement('p');
-        loading.className = 'muted';
-        loading.textContent = 'Loading digital vaccination card...';
-        container.appendChild(loading);
+        // Replaced text loader with Skeleton Loader
+        container.replaceChildren(createSkeletonLoader(1));
 
         try {
             const data = await apiRequest(`/api/owner/pets/${encodeURIComponent(petId)}/vaccinations`);
@@ -673,10 +718,8 @@ async function loadOwnerActivityRecords() {
         showMessage(ownerActivitySummary, 'Loading your pets\' activity records...');
     }
 
-    const loadingMessage = document.createElement('p');
-    loadingMessage.className = 'muted';
-    loadingMessage.textContent = 'Loading activity records...';
-    ownerActivityRecordsList.replaceChildren(loadingMessage);
+    // Replaced text loader with Skeleton Loader
+    ownerActivityRecordsList.replaceChildren(createSkeletonLoader(2));
 
     try {
         const query = new URLSearchParams();
@@ -803,7 +846,8 @@ async function loadOwnerActivityRecords() {
         'Loading feeding history...'
     );
 
-    ownerFeedingEventList.replaceChildren();
+    // Replaced empty state with Skeleton Loader
+    ownerFeedingEventList.replaceChildren(createSkeletonLoader(2));
 
     try {
         await populateOwnerFeedingPetFilter();
@@ -868,7 +912,9 @@ const data = await apiRequest(endpoint);
 async function loadNotifications() {
     refreshNotificationsButton.disabled = true;
     showMessage(notificationsSummary, 'Loading notifications...');
-    ownerNotificationList.replaceChildren();
+    
+    // Replaced empty state with Skeleton Loader
+    ownerNotificationList.replaceChildren(createSkeletonLoader(3));
 
     try {
         const data = await apiRequest('/api/owner/notifications');
@@ -884,9 +930,11 @@ async function loadNotifications() {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
             empty.textContent = 'You have no notifications yet.';
-            ownerNotificationList.appendChild(empty);
+            ownerNotificationList.replaceChildren(empty);
             return;
         }
+
+        ownerNotificationList.replaceChildren();
 
         notifications.forEach((notification) => {
             ownerNotificationList.appendChild(createNotificationCard(notification));
@@ -909,13 +957,16 @@ async function markNotificationAsRead(notificationId, button) {
 }
 
 async function loadPets() {
+    await new Promise(resolve => setTimeout(resolve, 3000)); // 3-second delay
     refreshPetsButton.disabled = true;
     showMessage(petsMessage, 'Loading registered pets...');
 
+    // Replaced empty state with Skeleton Loader
+    petList.replaceChildren(createSkeletonLoader(2));
+
     try {
         const data = await apiRequest('/api/owner/pets');
-        petList.replaceChildren();
-
+        
         const pets = Array.isArray(data.pets) ? data.pets : [];
         const count = data.count ?? pets.length;
 
@@ -926,8 +977,9 @@ async function loadPets() {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
             empty.textContent = 'You have not registered any pets yet. Use the Register tab to add your first pet.';
-            petList.appendChild(empty);
+            petList.replaceChildren(empty);
         } else {
+            petList.replaceChildren();
             pets.forEach((pet) => {
                 petList.appendChild(createPetCard(pet));
             });
@@ -1280,6 +1332,9 @@ const accountPhotoFileName = document.getElementById('accountPhotoFileName');
 const accountPhotoPreviewContainer = document.getElementById('accountPhotoPreviewContainer');
 const accountPhotoPreview = document.getElementById('accountPhotoPreview');
 
+// NEW: Reference to the custom Uiverse "Choose photo" button
+const triggerPhotoBtn = document.getElementById('triggerPhotoBtn');
+
 let accountPhotoObjectUrl = null;
 
 function updateAccountInitials(fullName) {
@@ -1297,7 +1352,15 @@ function updateAccountInitials(fullName) {
 }
 
 // Live Photo Selection & Preview Handler
-if (accountPhotoInput && accountPhotoPreviewContainer && accountPhotoPreview) {
+if (accountPhotoInput) {
+    
+    // NEW: Trigger the hidden file input when the Uiverse button is clicked
+    if (triggerPhotoBtn) {
+        triggerPhotoBtn.addEventListener('click', () => {
+            accountPhotoInput.click();
+        });
+    }
+
     accountPhotoInput.addEventListener('change', () => {
         const file = accountPhotoInput.files?.[0];
         if (accountPhotoObjectUrl) {
@@ -1305,11 +1368,7 @@ if (accountPhotoInput && accountPhotoPreviewContainer && accountPhotoPreview) {
             accountPhotoObjectUrl = null;
         }
 
-        if (!file) {
-            accountPhotoPreviewContainer.hidden = true;
-            if (accountPhotoFileName) accountPhotoFileName.textContent = 'No file chosen';
-            return;
-        }
+        if (!file) return;
 
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
@@ -1325,11 +1384,15 @@ if (accountPhotoInput && accountPhotoPreviewContainer && accountPhotoPreview) {
         }
 
         accountPhotoObjectUrl = URL.createObjectURL(file);
-        accountPhotoPreview.src = accountPhotoObjectUrl;
-        accountPhotoPreviewContainer.hidden = false;
-        if (accountPhotoFileName) {
-            accountPhotoFileName.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+        
+        if (accountProfilePhoto) {
+            accountProfilePhoto.src = accountPhotoObjectUrl;
+            accountProfilePhoto.hidden = false;
         }
+        if (accountProfileInitials) {
+            accountProfileInitials.hidden = true;
+        }
+        
         showMessage(accountProfileMessage, '');
     });
 }
@@ -1421,7 +1484,7 @@ if (accountProfileForm) {
         showMessage(accountProfileMessage, '');
 
         saveAccountProfileButton.disabled = true;
-        saveAccountProfileButton.textContent = 'Saving changes...';
+        saveAccountProfileButton.textContent = 'Saving...';
 
         try {
             const formData = new FormData();
@@ -1456,8 +1519,6 @@ if (accountProfileForm) {
                 });
                 await loadAccountPhoto();
                 accountPhotoInput.value = '';
-                if (accountPhotoPreviewContainer) accountPhotoPreviewContainer.hidden = true;
-                if (accountPhotoFileName) accountPhotoFileName.textContent = 'No file chosen';
             }
 
             updateAccountInitials(profileData.user.fullName);
