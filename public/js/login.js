@@ -14,6 +14,18 @@ const showLoginButton = document.getElementById('showLoginButton');
 
 const formSide = document.querySelector('.login-form-side');
 
+const SESSION_TOKEN_KEY = 'smartvetAccessToken';
+const SESSION_USER_KEY = 'smartvetUser';
+
+function clearStoredSession() {
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_USER_KEY);
+}
+
+// A visit to the login page always starts from a clean slate, so an owner is
+// never silently restored into the dashboard on a later visit.
+clearStoredSession();
+
 // Registration Profile Photo Elements
 const registerFullName = document.getElementById('registerFullName');
 const registerProfilePhoto = document.getElementById('registerProfilePhoto');
@@ -68,6 +80,24 @@ function showRegisterView() {
 showRegisterButton.addEventListener('click', showRegisterView);
 showLoginButton.addEventListener('click', showLoginView);
 
+// Eye icon: reveal or hide the value typed into a password field.
+document.querySelectorAll('.password-toggle').forEach((button) => {
+    button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.target);
+
+        if (!input) return;
+
+        const showPassword = input.type === 'password';
+        const field = input.id === 'confirmPassword' ? 'confirm password' : 'password';
+
+        input.type = showPassword ? 'text' : 'password';
+        button.classList.toggle('is-visible', showPassword);
+        button.setAttribute('aria-pressed', String(showPassword));
+        button.setAttribute('aria-label', `${showPassword ? 'Hide' : 'Show'} ${field}`);
+        input.focus();
+    });
+});
+
 // Live Preview for Registration Profile Photo
 if (registerProfilePhoto) {
     registerProfilePhoto.addEventListener('change', (e) => {
@@ -120,8 +150,7 @@ async function requestJson(url, options) {
 function redirectByRole(user) {
     const ownerAppMode = new URLSearchParams(window.location.search).get('app') === 'owner';
     if (ownerAppMode && user?.role !== 'owner') {
-        sessionStorage.removeItem('smartvetAccessToken');
-        sessionStorage.removeItem('smartvetUser');
+        clearStoredSession();
         throw new Error('The SmartVet mobile app is for pet-owner accounts only.');
     }
 
@@ -134,8 +163,7 @@ function redirectByRole(user) {
     const destination = destinations[user?.role];
 
     if (!destination) {
-        sessionStorage.removeItem('smartvetAccessToken');
-        sessionStorage.removeItem('smartvetUser');
+        clearStoredSession();
         throw new Error('This account has an unrecognized role.');
     }
 
@@ -147,8 +175,9 @@ function saveAuthenticatedSession(data) {
         throw new Error('The server returned an invalid authentication response.');
     }
 
-    sessionStorage.setItem('smartvetAccessToken', data.accessToken);
-    sessionStorage.setItem('smartvetUser', JSON.stringify(data.user));
+    // Hand the token to the next page once. The dashboard keeps it in memory
+    // only, so it is never reused on a later visit.
+    sessionStorage.setItem(SESSION_TOKEN_KEY, data.accessToken);
 
     redirectByRole(data.user);
 }

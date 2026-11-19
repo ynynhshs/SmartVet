@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const QRCode = require('qrcode');
 const { body, validationResult } = require('express-validator');
 
-const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
@@ -54,96 +53,67 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// 1. Cloudinary Storage Definitions
-const petPhotoStorage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'smartvet/pets',
-        allowed_formats: ['jpg', 'png', 'webp']
-    }
-});
-
-const profilePhotoStorage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'smartvet/profiles',
-        allowed_formats: ['jpg', 'png', 'webp']
-    }
-});
-
-const allowedPetPhotoTypes = {
+// 1. Cloudinary storage + multer upload for a single photo field.
+const ALLOWED_PHOTO_TYPES = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/webp': '.webp'
 };
 
-const allowedProfilePhotoTypes = {
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/webp': '.webp'
-};
-
-// 2. Multer Configurations
-const petPhotoUpload = multer({
-    storage: petPhotoStorage,
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-    fileFilter: (_req, file, callback) => {
-        if (!Object.prototype.hasOwnProperty.call(allowedPetPhotoTypes, file.mimetype)) {
-            const error = new Error('Pet photo must be a JPG, PNG, or WebP image.');
-            error.code = 'INVALID_PET_PHOTO_TYPE';
-            return callback(error);
+function createPhotoUpload(folder) {
+    return multer({
+        storage: new CloudinaryStorage({
+            cloudinary: cloudinary,
+            params: {
+                folder,
+                allowed_formats: ['jpg', 'png', 'webp']
+            }
+        }),
+        limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+        fileFilter: (_req, file, callback) => {
+            if (!Object.prototype.hasOwnProperty.call(ALLOWED_PHOTO_TYPES, file.mimetype)) {
+                const error = new Error('Photo must be a JPG, PNG, or WebP image.');
+                error.code = 'INVALID_PHOTO_TYPE';
+                return callback(error);
+            }
+            callback(null, true);
         }
-        callback(null, true);
-    }
-});
-
-const profilePhotoUpload = multer({
-    storage: profilePhotoStorage,
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-    fileFilter: (_req, file, callback) => {
-        if (!Object.prototype.hasOwnProperty.call(allowedProfilePhotoTypes, file.mimetype)) {
-            const error = new Error('Profile photo must be a JPG, PNG, or WebP image.');
-            error.code = 'INVALID_PROFILE_PHOTO_TYPE';
-            return callback(error);
-        }
-        callback(null, true);
-    }
-});
-
-// 3. Handlers
-function handlePetPhotoUpload(req, res, next) {
-    petPhotoUpload.single('petPhoto')(req, res, (error) => {
-        if (!error) return next();
-
-        if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ success: false, message: 'Pet photo must not exceed 5 MB.' });
-        }
-        if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'INVALID_PET_PHOTO_TYPE') {
-            return res.status(400).json({
-                success: false,
-                message: error.code === 'INVALID_PET_PHOTO_TYPE' ? error.message : 'Only one pet photo may be uploaded.'
-            });
-        }
-        return next(error);
     });
 }
 
-function handleProfilePhotoUpload(req, res, next) {
-    profilePhotoUpload.single('profilePhoto')(req, res, (error) => {
-        if (!error) return next();
+// 2. Turn multer failures (wrong file type, oversized photo) into a readable
+// 400 instead of letting them fall through to the 500 handler.
+function createPhotoUploadHandler(upload, field, label) {
+    return (req, res, next) => {
+        upload.single(field)(req, res, (error) => {
+            if (!error) return next();
 
-        if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ success: false, message: 'Profile photo must not exceed 5 MB.' });
-        }
-        if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'INVALID_PROFILE_PHOTO_TYPE') {
-            return res.status(400).json({
-                success: false,
-                message: error.code === 'INVALID_PROFILE_PHOTO_TYPE' ? error.message : 'Only one profile photo may be uploaded.'
-            });
-        }
-        return next(error);
-    });
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({
+                    success: false,
+                    message: `${label} must not exceed 5 MB.`
+                });
+            }
+
+            if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'INVALID_PHOTO_TYPE') {
+                return res.status(400).json({
+                    success: false,
+                    message: error.code === 'INVALID_PHOTO_TYPE'
+                        ? `${label} must be a JPG, PNG, or WebP image.`
+                        : `Only one ${label.toLowerCase()} may be uploaded.`
+                });
+            }
+
+            return next(error);
+        });
+    };
 }
+
+const petPhotoUpload = createPhotoUpload('smartvet/pets');
+const profilePhotoUpload = createPhotoUpload('smartvet/profiles');
+
+const handlePetPhotoUpload = createPhotoUploadHandler(petPhotoUpload, 'petPhoto', 'Pet photo');
+const handleProfilePhotoUpload = createPhotoUploadHandler(profilePhotoUpload, 'profilePhoto', 'Profile photo');
 
 // All endpoints in this router require an authenticated pet owner.
 router.use(requireAuth, authorizeRoles('owner'));

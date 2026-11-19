@@ -84,20 +84,6 @@ header.site-header.owner-header {
     text-decoration: none;
 }
 
-.brand-mark {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    color: white;
-    background: linear-gradient(135deg, #38c2ef, #2b70f0);
-    box-shadow: 
-        inset 0 2px 4px rgba(255, 255, 255, 0.6),
-        inset 0 -3px 5px rgba(10, 50, 120, 0.3),
-        0 6px 14px rgba(40, 110, 210, 0.3);
-}
-
 .header-user {
     display: flex;
     align-items: center;
@@ -236,36 +222,6 @@ header.site-header.owner-header {
     color: #fff;
 }
 
-.sidebar-footer {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-top: auto;
-    padding: 16px 10px 4px;
-    border-top: 2px solid rgba(210, 225, 240, 0.7);
-}
-
-.sidebar-status-dot {
-    flex: 0 0 10px;
-    width: 10px;
-    height: 10px;
-    margin-top: 5px;
-    border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
-}
-
-.sidebar-footer strong {
-    color: var(--clay-heading);
-    font-size: 0.84rem;
-}
-
-.sidebar-footer p {
-    margin: 3px 0 0;
-    color: var(--clay-muted);
-    font-size: 0.78rem;
-}
-
 /* Main Workspace */
 main.owner-main {
     width: 100%;
@@ -300,6 +256,7 @@ main.owner-main {
     color: var(--clay-heading);
     font-size: clamp(1.8rem, 2.5vw, 2.3rem);
     letter-spacing: -0.5px;
+    text-wrap: balance;
 }
 
 .page-eyebrow {
@@ -544,32 +501,6 @@ button:disabled {
     margin-top: 18px;
 }
 
-.pet-card {
-    padding: 22px;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    border-radius: 22px;
-    background: var(--clay-surface-card);
-    box-shadow: var(--clay-shadow-sm);
-    transition: all 0.2s ease;
-}
-
-.pet-card:hover {
-    background: #ffffff;
-    transform: translateY(-2px);
-    box-shadow: var(--clay-shadow);
-}
-
-.pet-card h3 {
-    margin: 0 0 8px;
-    color: var(--clay-heading);
-    font-size: 1.15rem;
-}
-
-.pet-card p {
-    margin: 6px 0;
-    color: var(--clay-muted);
-}
-
 .pet-status {
     display: inline-block;
     margin-top: 10px;
@@ -613,30 +544,8 @@ button:disabled {
     margin-top: 14px;
 }
 
-.owner-vaccination-card {
-    margin-top: 16px;
-    padding: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    border-radius: 20px;
-    background: var(--clay-surface-card);
-    box-shadow: var(--clay-shadow-sm);
-}
-
 .owner-vaccination-card[hidden] {
     display: none !important;
-}
-
-.owner-vaccination-entry {
-    margin-top: 12px;
-    padding: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.85);
-    border-radius: 16px;
-    background: #f5f9fe;
-}
-
-.owner-vaccination-entry h5 {
-    margin: 0 0 8px;
-    color: var(--clay-heading);
 }
 
 /* QR Code Section */
@@ -888,6 +797,7 @@ button:disabled {
     }
 
     .owner-feeding-filters label {
+        flex: 0 0 auto;
         max-width: none;
         width: 100%;
     }
@@ -1001,14 +911,6 @@ button:disabled {
     margin: 0;
 }
 
-.owner-shell.sidebar-collapsed .sidebar-footer {
-    justify-content: center;
-}
-
-.owner-shell.sidebar-collapsed .sidebar-footer > div {
-    display: none;
-}
-
 @media (max-width: 760px) {
     .owner-shell.sidebar-collapsed {
         grid-template-columns: minmax(0, 1fr);
@@ -1114,12 +1016,7 @@ body[data-theme="dark"] .owner-sidebar {
 }
 
 body[data-theme="dark"] .stat-card,
-body[data-theme="dark"] .section-card,
-body[data-theme="dark"] .pet-card,
-body[data-theme="dark"] .feeding-card,
-body[data-theme="dark"] .qr-panel,
-body[data-theme="dark"] .empty-state,
-body[data-theme="dark"] .notification-card {
+body[data-theme="dark"] .empty-state {
     background-color: var(--clay-surface-card);
     color: var(--clay-text);
     border-color: #2b3d53;
@@ -1149,8 +1046,7 @@ body[data-theme="dark"] th {
     border-color: #34485f;
 }
 
-body[data-theme="dark"] .muted,
-body[data-theme="dark"] .sidebar-footer p {
+body[data-theme="dark"] .muted {
     color: var(--clay-muted);
 }
 
@@ -1299,53 +1195,6 @@ main.owner-main {
     max-width: 100%;
 }
 
-/* Pet Card - Left-aligned grid placement, centered internal contents */
-.pet-card {
-    width: 100%;
-    max-width: 360px;
-    padding: 24px;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    border-radius: 22px;
-    background: var(--clay-surface-card);
-    box-shadow: var(--clay-shadow-sm);
-    transition: all 0.2s ease;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Centers the image, text, and buttons inside the card */
-    text-align: center; /* Centers the text readability */
-}
-
-.pet-card:hover {
-    background: #ffffff;
-    transform: translateY(-2px);
-    box-shadow: var(--clay-shadow);
-}
-
-.pet-card img.registered-pet-photo {
-    display: block;
-    width: 140px;
-    height: 140px;
-    object-fit: cover;
-    object-position: center;
-    border-radius: 16px;
-    margin: 0 auto 16px auto; /* Centers the photo */
-    background-color: #f1f3f5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.pet-card h3,
-.pet-card p {
-    width: 100%;
-    text-align: center; /* Centers pet name, species, breed, etc. */
-    overflow-wrap: anywhere;
-}
-
-.pet-card .pet-status {
-    margin-top: 12px;
-    align-self: center; /* Centers the status badge */
-}
-
 /* Medium screens */
 @media (max-width: 1050px) {
     .owner-shell {
@@ -1375,12 +1224,6 @@ main.owner-main {
     .pet-grid {
         grid-template-columns: minmax(0, 1fr);
     }
-}
-
-/* Prevent long text or identifiers from stretching cards */
-.pet-card h3,
-.pet-card p {
-    overflow-wrap: anywhere;
 }
 
 /* SmartVet dashboard entrance animation */
@@ -1447,71 +1290,6 @@ body.theme-transitioning * {
     box-shadow: var(--clay-shadow-sm);
 }
 
-.account-avatar {
-    position: relative;
-    width: 130px;
-    height: 130px;
-    border-radius: 50%;
-    overflow: hidden;
-    display: grid;
-    place-items: center;
-    background: #e4eefb;
-    border: 3px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 
-        inset 0 3px 6px rgba(15, 45, 80, 0.1),
-        0 8px 16px rgba(35, 82, 130, 0.12);
-    margin-bottom: 16px;
-    flex-shrink: 0;
-}
-
-.account-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-#accountProfileInitials {
-    font-size: 2.5rem;
-    color: var(--clay-heading);
-    font-weight: 800;
-}
-
-.account-photo-controls {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.photo-file-label {
-    width: 100%;
-    cursor: pointer;
-    text-align: center;
-    margin: 0;
-}
-
-/* 2x2 Square Proportion Holder */
-.account-photo-preview-box {
-    width: 180px;
-    height: 180px;
-    margin: 0 auto;
-    border-radius: 16px;
-    overflow: hidden;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    background: #ffffff;
-    box-shadow: inset 0 2px 4px rgba(15, 45, 80, 0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.account-photo-preview-box img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* Keeps 2x2 filling nicely without stretching */
-    object-position: center top;
-}
-
 .account-form-side {
     display: flex;
     flex-direction: column;
@@ -1527,15 +1305,6 @@ body.theme-transitioning * {
     .account-profile-grid {
         grid-template-columns: minmax(0, 1fr);
     }
-}
-
-/* ==========================================
-   PET REGISTRATION SIDE-BY-SIDE 2x2 FIX
-   ========================================== */
-.pet-avatar-badge {
-    display: grid;
-    place-items: center;
-    font-size: 2.5rem;
 }
 
 /* Mobile dashboard layout and slide-out navigation */
@@ -1679,6 +1448,12 @@ body.theme-transitioning * {
         gap: 8px;
     }
 
+    .owner-header .logout {
+        min-height: 40px;
+        padding: 8px 14px;
+        font-size: 0.84rem;
+    }
+
     body.sidebar-open {
         overflow: hidden;
     }
@@ -1691,9 +1466,17 @@ body.theme-transitioning * {
         gap: 16px;
     }
 
-    .account-photo-card,
+    /* Keep the upload box and the form fields on the same full-width grid. */
+    .account-photo-card {
+        padding: 0;
+    }
+
     .account-form-side {
-        padding: 18px;
+        gap: 12px;
+        padding: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
     }
 
     .account-form-side > .form-help,
@@ -1721,10 +1504,6 @@ body.theme-transitioning * {
     .sidebar-backdrop {
         transition: none;
     }
-}
-
-.account-photo-preview-box[hidden] {
-    display: none !important;
 }
 
 /* ==========================================
@@ -2120,170 +1899,6 @@ body[data-theme="dark"] .card__form-fields .form-field textarea {
 }
 
 /* ==========================================
-   UIVERSE UPLOAD CONTAINER (Adapted for Register Pet)
-   ========================================== */
-.upload-container {
-  height: 340px;
-  width: 100%;
-  max-width: 320px;
-  border-radius: 20px;
-  box-shadow: var(--clay-shadow);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  gap: 10px;
-  background-color: var(--clay-surface-card);
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  margin: 0 auto;
-}
-
-body[data-theme="dark"] .upload-container {
-    background-color: var(--clay-surface-card);
-    border-color: #2b3d53;
-}
-
-.upload-header {
-  flex: 1;
-  width: 100%;
-  border: 2px dashed var(--clay-blue);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  cursor: pointer;
-  overflow: hidden;
-  position: relative;
-  background-color: rgba(35, 137, 224, 0.05);
-  transition: background 0.2s ease;
-}
-
-.upload-header:hover {
-    background-color: rgba(35, 137, 224, 0.1);
-}
-
-.upload-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-}
-
-/* Hide placeholder when preview is active */
-.upload-header:has(.upload-preview-box:not([hidden])) .upload-placeholder {
-    display: none;
-}
-
-.upload-placeholder svg {
-  height: 80px;
-  color: var(--clay-blue);
-}
-
-.upload-placeholder p {
-  text-align: center;
-  color: var(--clay-text);
-  font-weight: 600;
-  margin-top: 10px;
-}
-
-/* Image Preview */
-.upload-preview-box {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-.upload-preview-box img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain; /* Shows the whole pet without cropping */
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-
-/* Footer with File Name and Remove Button */
-.upload-footer {
-  background-color: rgba(35, 137, 224, 0.1);
-  width: 100%;
-  height: 45px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--clay-text);
-  box-sizing: border-box;
-}
-
-body[data-theme="dark"] .upload-footer {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-.upload-footer > svg {
-  height: 20px;
-  width: 20px;
-  color: var(--clay-blue);
-  flex-shrink: 0;
-}
-
-.upload-filename {
-  flex: 1;
-  text-align: center;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 8px;
-}
-
-.upload-trash-btn {
-  background: rgba(255, 255, 255, 0.5);
-  border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #e74c3c;
-  transition: all 0.2s ease;
-  padding: 0;
-}
-
-body[data-theme="dark"] .upload-trash-btn {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.upload-trash-btn:hover {
-    background: #e74c3c;
-    color: white;
-    transform: scale(1.1);
-}
-
-.upload-trash-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-#petPhoto {
-  display: none;
-}
-
-.upload-preview-box[hidden] {
-    display: none !important;
-}
-
-/* ==========================================
    UIVERSE CUSTOM FILE UPLOAD (SmartVet Theme)
    ========================================== */
 .custum-file-upload {
@@ -2488,13 +2103,16 @@ body[data-theme="dark"] .sv-skeleton {
    VACCINATION CARD READABILITY & HIGHLIGHTS
    ========================================== */
 .owner-vaccination-card {
+    margin-top: 16px;
     background: var(--clay-surface-card);
     padding: 20px;
     border-radius: 16px;
     border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: var(--clay-shadow-sm);
 }
 
 .owner-vaccination-entry {
+    margin-top: 12px;
     background: #f8fafc;
     padding: 16px;
     border-radius: 12px;
@@ -2666,5 +2284,35 @@ body[data-theme="dark"] .owner-follow-up-status.upcoming {
 @media (max-width: 560px) {
     .card__form-fields .account-grid-2 {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .card__form-fields,
+    .card__wrapper {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+}
+
+/* Phone sizing kept at the end so it wins over the base card/upload rules. */
+@media (max-width: 760px) {
+    /* Pet cards are full width on phones, so they need a shorter canvas. */
+    .flip-card {
+        height: 340px;
+    }
+
+    .flip-card-front .registered-pet-photo {
+        width: 130px;
+        height: 130px;
+        margin-bottom: 14px;
+    }
+
+    .custum-file-upload {
+        height: 220px;
+        gap: 12px;
+        padding: 1rem;
+    }
+
+    .custum-file-upload .icon svg {
+        height: 54px;
     }
 }

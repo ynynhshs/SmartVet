@@ -129,6 +129,7 @@
     color: var(--clay-heading, #14314c);
     font-size: 2rem;
     letter-spacing: -0.5px;
+    text-wrap: balance;
 }
 
 .form-header p {
@@ -283,6 +284,61 @@
 
 .form-field select option[value=""] {
     color: #8aa3be;
+}
+
+/* Password field with a show/hide visibility toggle */
+.password-field {
+    position: relative;
+}
+
+.password-field input {
+    padding-right: 54px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--clay-muted, #537490);
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.password-toggle:hover {
+    background: rgba(35, 137, 224, 0.12);
+    color: var(--clay-blue, #2389e0);
+}
+
+.password-toggle:focus-visible {
+    outline: 3px solid rgba(35, 137, 224, 0.45);
+    outline-offset: 2px;
+}
+
+.password-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
+.password-toggle .icon-hide {
+    display: none;
+}
+
+.password-toggle.is-visible .icon-show {
+    display: none;
+}
+
+.password-toggle.is-visible .icon-hide {
+    display: block;
 }
 
 /* Profile Photo Upload */

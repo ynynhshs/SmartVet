@@ -1,4 +1,14 @@
+// The owner session is intentionally NOT persisted. The login page hands the
+// access token over once and it lives in memory for this page only, so every
+// new visit or reload asks the owner to sign in again.
 const token = sessionStorage.getItem('smartvetAccessToken');
+
+function clearStoredSession() {
+    sessionStorage.removeItem('smartvetAccessToken');
+    sessionStorage.removeItem('smartvetUser');
+}
+
+clearStoredSession();
 
 const welcomeHeading = document.getElementById('welcomeHeading');
 const dashboardMessage = document.getElementById('dashboardMessage');
@@ -432,8 +442,7 @@ function createSkeletonLoader(count = 3) {
 }
 
 function logout() {
-    sessionStorage.removeItem('smartvetAccessToken');
-    sessionStorage.removeItem('smartvetUser');
+    clearStoredSession();
     window.location.assign('/login.html');
 }
 
@@ -1080,22 +1089,22 @@ async function loadOwnerActivityRecords() {
     try {
         await populateOwnerFeedingPetFilter();
 
-const params = new URLSearchParams();
+        const params = new URLSearchParams();
 
-if (ownerFeedingPetFilter?.value) {
-    params.set('petId', ownerFeedingPetFilter.value);
-}
+        if (ownerFeedingPetFilter?.value) {
+            params.set('petId', ownerFeedingPetFilter.value);
+        }
 
-if (ownerFeedingStatusFilter?.value) {
-    params.set('status', ownerFeedingStatusFilter.value);
-}
+        if (ownerFeedingStatusFilter?.value) {
+            params.set('status', ownerFeedingStatusFilter.value);
+        }
 
-const query = params.toString();
-const endpoint = query
-    ? `/api/owner/feeding-events?${query}`
-    : '/api/owner/feeding-events';
+        const query = params.toString();
+        const endpoint = query
+            ? `/api/owner/feeding-events?${query}`
+            : '/api/owner/feeding-events';
 
-const data = await apiRequest(endpoint);
+        const data = await apiRequest(endpoint);
         const events = Array.isArray(data.events) ? data.events : [];
 
         if (events.length === 0) {
@@ -1185,7 +1194,6 @@ async function markNotificationAsRead(notificationId, button) {
 }
 
 async function loadPets() {
-    await new Promise(resolve => setTimeout(resolve, 3000)); // 3-second delay
     refreshPetsButton.disabled = true;
     showMessage(petsMessage, 'Loading registered pets...');
 
@@ -1563,9 +1571,6 @@ const saveAccountProfileButton = document.getElementById('saveAccountProfileButt
 const accountPhotoInput = document.getElementById('accountPhotoInput');
 const accountProfilePhoto = document.getElementById('accountProfilePhoto');
 const accountProfileInitials = document.getElementById('accountProfileInitials');
-const accountPhotoFileName = document.getElementById('accountPhotoFileName');
-const accountPhotoPreviewContainer = document.getElementById('accountPhotoPreviewContainer');
-const accountPhotoPreview = document.getElementById('accountPhotoPreview');
 
 // NEW: Reference to the custom Uiverse "Choose photo" button
 const triggerPhotoBtn = document.getElementById('triggerPhotoBtn');
@@ -1602,6 +1607,11 @@ function displayOwnerProfile(user) {
     updateAccountInitials(user.fullName);
     if (welcomeHeading) {
         welcomeHeading.textContent = `Welcome, ${user.fullName || 'Pet Owner'}`;
+    }
+
+    const cardTitle = document.getElementById('accountCardTitle');
+    if (cardTitle) {
+        cardTitle.textContent = user.fullName || 'My Account';
     }
 }
 
