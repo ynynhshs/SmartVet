@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
@@ -48,6 +47,12 @@ router.get('/pets/:petId/photo', async (req, res, next) => {
             });
         }
 
+        // --- CLOUDINARY REDIRECT FIX ---
+        if (pet.photoFilename.startsWith('http')) {
+            return res.redirect(pet.photoFilename);
+        }
+        // -------------------------------
+
         const photoDirectory = path.join(
             __dirname,
             '../../uploads/pet-photos'
@@ -63,8 +68,13 @@ router.get('/pets/:petId/photo', async (req, res, next) => {
         res.set('X-Content-Type-Options', 'nosniff');
 
         return res.sendFile(photoPath, (error) => {
-            if (error && !res.headersSent) {
-                return next(error);
+            if (error) {
+                if (!res.headersSent) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Pet photo file is missing from the server.'
+                    });
+                }
             }
         });
     } catch (error) {
@@ -579,9 +589,6 @@ router.get('/pets/qr/:identifier', async (req, res, next) => {
                 'petCode name species breed sex dateOfBirth color registrationStatus verifiedAt ownerUserId photoFilename photoContentType'
             )
             .populate('ownerUserId', 'fullName email phone')
-            .select(
-                'petCode name species breed sex dateOfBirth color registrationStatus verifiedAt'
-            )
             .lean();
 
         if (!pet) {

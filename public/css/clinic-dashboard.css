@@ -1787,3 +1787,224 @@ body[data-theme="dark"] .qr-details-grid dd {
         width: 100%;
     }
 }
+
+/* ==========================================
+   UIVERSE KAMEHAMEHA STAT CARDS (Clinic Dashboard)
+   ========================================== */
+.clinic-stat-cards {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    margin-bottom: 30px;
+    width: 100%;
+}
+
+.clinic-stat-card {
+    flex: 1; /* Makes all 4 cards share the width equally */
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    flex-direction: column;
+    text-align: left;
+    min-height: 140px;
+    padding: 20px;
+    border-radius: 20px;
+    color: white;
+    cursor: pointer;
+    transition: all 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+/* The Uiverse Colors */
+.clinic-stat-card.red {
+    background: linear-gradient(135deg, #007e9e, #00b4d8);
+}
+.clinic-stat-card.blue {
+    background: linear-gradient(135deg, #0062ff, #4d94ff);
+}
+.clinic-stat-card.green {
+    background: linear-gradient(135deg, #18cd5e, #42e681);
+}
+.clinic-stat-card.purple {
+    background: linear-gradient(135deg, #8e2de2, #4a00e0);
+}
+
+/* Text Styling inside cards */
+.clinic-stat-card .stat-value {
+    font-size: 2.5rem;
+    font-weight: 900;
+    margin: 0;
+    line-height: 1;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.clinic-stat-card .stat-label {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin: 5px 0 0 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.clinic-stat-card .stat-subtext {
+    font-size: 0.85rem;
+    margin: 5px 0 0 0;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* The Hover Effects */
+.clinic-stat-card:hover {
+    transform: scale(1.05) translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+
+.clinic-stat-cards:hover > .clinic-stat-card:not(:hover) {
+    filter: blur(8px);
+    transform: scale(0.92);
+    opacity: 0.7;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 900px) {
+    .clinic-stat-cards {
+        flex-wrap: wrap;
+    }
+    .clinic-stat-card {
+        flex: 1 1 calc(50% - 20px); /* 2 columns on tablets */
+    }
+}
+
+@media (max-width: 600px) {
+    .clinic-stat-card {
+        flex: 1 1 100%; /* 1 column on phones */
+    }
+}
+
+/* ==========================================
+   UIVERSE STAT CARDS - READABILITY FIX
+   ========================================== */
+
+/* Force all text inside these specific cards to be white */
+.clinic-stat-card p {
+    color: #ffffff !important;
+    margin: 0 !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 1. The Number (Big & Bold) */
+.clinic-stat-card .stat-value {
+    font-size: 3rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    margin-bottom: 5px !important;
+    letter-spacing: -1px !important;
+}
+
+/* 2. The Main Label (Strong & Clear) */
+.clinic-stat-card .stat-label {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    margin-bottom: 8px !important;
+    color: #ffffff !important;
+}
+
+/* 3. The Subtext (Readable but slightly smaller) */
+.clinic-stat-card .stat-subtext {
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    opacity: 0.9 !important;
+    line-height: 1.2 !important;
+    color: #ffffff !important;
+}
+
+/* Optional: Make the background colors a bit deeper so white text pops even more */
+.clinic-stat-card.red {
+    background: linear-gradient(135deg, #0088a8, #005f73) !important;
+}
+.clinic-stat-card.blue {
+    background: linear-gradient(135deg, #2563eb, #1e3a8a) !important;
+}
+.clinic-stat-card.green {
+    background: linear-gradient(135deg, #10b981, #047857) !important;
+}
+.clinic-stat-card.purple {
+    background: linear-gradient(135deg, #8b5cf6, #5b21b6) !important;
+}
+
+/* ==========================================
+   QR PET DETAILS HIGHLIGHT
+   ========================================== */
+.qr-pet-name-highlight {
+    font-size: 2.2rem !important;
+    font-weight: 900 !important;
+    color: var(--clay-heading) !important;
+    margin-bottom: 8px !important;
+    letter-spacing: -0.5px;
+}
+
+.qr-pet-id-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(35, 137, 224, 0.15), rgba(35, 137, 224, 0.05));
+    color: var(--clay-blue-dark);
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(35, 137, 224, 0.3);
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+}
+
+/* Update the details grid to use cards */
+.qr-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.qr-detail-card {
+    background: var(--clay-surface-card);
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(203, 217, 232, 0.8);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    display: flex;
+    flex-direction: column;
+}
+
+.qr-detail-card dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--clay-muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.qr-detail-card dd {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--clay-heading);
+    margin: 0;
+    text-transform: capitalize;
+}
+
+/* Dark Mode Overrides */
+body[data-theme="dark"] .qr-pet-id-badge {
+    background: rgba(35, 137, 224, 0.2);
+    color: #83c3ff;
+    border-color: rgba(131, 195, 255, 0.4);
+}
+
+body[data-theme="dark"] .qr-detail-card {
+    background: var(--clay-surface-card);
+    border-color: #2b3d53;
+}

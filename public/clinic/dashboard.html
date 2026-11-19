@@ -147,39 +147,31 @@
                 Checking your session...
             </p>
 
-            <!-- Summary cards: existing Claymorphism classes are retained -->
-            <div class="overview-stats">
-                <article class="stat-card">
-                    <span class="stat-label">Registered Pets</span>
-                    <strong id="registeredPetsCount">—</strong>
-                    <span class="stat-description">
-                        Total pet records in SmartVet
-                    </span>
-                </article>
-
-                <article class="stat-card">
-                    <span class="stat-label">Pending Review</span>
-                    <strong id="pendingCount">—</strong>
-                    <span class="stat-description">
-                        Awaiting registration review
-                    </span>
-                </article>
-
-                <article class="stat-card">
-                    <span class="stat-label">Overdue Vaccines</span>
-                    <strong id="overdueVaccineCount">—</strong>
-                    <span class="stat-description">
-                        Past their recorded due date
-                    </span>
-                </article>
-
-                <article class="stat-card">
-                    <span class="stat-label">Due Within 30 Days</span>
-                    <strong id="dueSoonVaccineCount">—</strong>
-                    <span class="stat-description">
-                        Upcoming recorded vaccinations
-                    </span>
-                </article>
+            <!-- Uiverse Kamehameha Stat Cards -->
+            <div class="clinic-stat-cards">
+                <div class="clinic-stat-card red">
+                    <p class="stat-value" id="registeredPetsCount">—</p>
+                    <p class="stat-label">Registered Pets</p>
+                    <p class="stat-subtext">Total pet records in SmartVet</p>
+                </div>
+                
+                <div class="clinic-stat-card blue">
+                    <p class="stat-value" id="pendingCount">—</p>
+                    <p class="stat-label">Pending Review</p>
+                    <p class="stat-subtext">Awaiting registration review</p>
+                </div>
+                
+                <div class="clinic-stat-card green">
+                    <p class="stat-value" id="overdueVaccineCount">—</p>
+                    <p class="stat-label">Overdue Vaccines</p>
+                    <p class="stat-subtext">Past their recorded due date</p>
+                </div>
+                
+                <div class="clinic-stat-card purple">
+                    <p class="stat-value" id="dueSoonVaccineCount">—</p>
+                    <p class="stat-label">Due Within 30 Days</p>
+                    <p class="stat-subtext">Upcoming recorded vaccinations</p>
+                </div>
             </div>
 
             <!-- Preserve compatibility with existing dashboard JavaScript -->
@@ -347,32 +339,32 @@
                             hidden>
                     </div>
 
-                    <div class="qr-pet-details">
-                        <h2 id="qrPetName">Pet name</h2>
-                        <p id="qrPetCode" class="muted">Official Pet ID</p>
+                                        <div class="qr-pet-details">
+                        <h2 id="qrPetName" class="qr-pet-name-highlight">Pet name</h2>
+                        <p id="qrPetCode" class="qr-pet-id-badge">Official Pet ID</p>
 
                         <dl class="qr-details-grid">
-                            <div>
+                            <div class="qr-detail-card">
                                 <dt>Species</dt>
                                 <dd id="qrPetSpecies">—</dd>
                             </div>
-                            <div>
+                            <div class="qr-detail-card">
                                 <dt>Breed</dt>
                                 <dd id="qrPetBreed">—</dd>
                             </div>
-                            <div>
+                            <div class="qr-detail-card">
                                 <dt>Sex</dt>
                                 <dd id="qrPetSex">—</dd>
                             </div>
-                            <div>
+                            <div class="qr-detail-card">
                                 <dt>Date of Birth</dt>
                                 <dd id="qrPetDateOfBirth">—</dd>
                             </div>
-                            <div>
+                            <div class="qr-detail-card">
                                 <dt>Color</dt>
                                 <dd id="qrPetColor">—</dd>
                             </div>
-                            <div>
+                            <div class="qr-detail-card">
                                 <dt>Pet Owner</dt>
                                 <dd id="qrPetOwnerName">—</dd>
                             </div>
