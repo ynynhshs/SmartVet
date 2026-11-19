@@ -1,4 +1,3 @@
-
 const petList = document.getElementById('petList');
 const listMessage = document.getElementById('listMessage');
 const sessionMessage = document.getElementById('sessionMessage');
@@ -47,6 +46,24 @@ const copyDeviceTokenButton = document.getElementById('copyDeviceTokenButton');
 
 const refreshDevicesButton = document.getElementById('refreshDevicesButton');
 const devicesList = document.getElementById('devicesList');
+const vaccineInventoryForm = document.getElementById('vaccineInventoryForm');
+const vaccineInventoryList = document.getElementById('vaccineInventoryList');
+const vaccineInventoryMessage = document.getElementById('vaccineInventoryMessage');
+const saveVaccineInventoryButton = document.getElementById('saveVaccineInventoryButton');
+const refreshVaccineInventoryButton = document.getElementById('refreshVaccineInventoryButton');
+const vaccinationInventorySelect = document.getElementById('vaccinationInventorySelect');
+const vaccinationInventoryQuantity = document.getElementById('vaccinationInventoryQuantity');
+const qrVaccinationInventorySelect = document.getElementById('qrVaccinationInventorySelect');
+const qrVaccinationInventoryQuantity = document.getElementById('qrVaccinationInventoryQuantity');
+
+const clinicReportForm = document.getElementById('clinicReportForm');
+const clinicReportType = document.getElementById('clinicReportType');
+const clinicReportFrom = document.getElementById('clinicReportFrom');
+const clinicReportTo = document.getElementById('clinicReportTo');
+const clinicReportMessage = document.getElementById('clinicReportMessage');
+const clinicReportResults = document.getElementById('clinicReportResults');
+const runClinicReportButton = document.getElementById('runClinicReportButton');
+const exportClinicReportButton = document.getElementById('exportClinicReportButton');
 
 // QR Pet Identification elements
 const qrCameraVideo = document.getElementById('qrCameraVideo');
@@ -100,8 +117,26 @@ const qrVaccinationHistoryList = document.getElementById(
 const qrOwnerName = document.getElementById('qrOwnerName');
 const qrOwnerEmail = document.getElementById('qrOwnerEmail');
 const qrOwnerPhone = document.getElementById('qrOwnerPhone');
+const qrOwnerDateOfBirth = document.getElementById('qrOwnerDateOfBirth');
+const qrOwnerGender = document.getElementById('qrOwnerGender');
+const qrOwnerCivilStatus = document.getElementById('qrOwnerCivilStatus');
+const qrOwnerNationality = document.getElementById('qrOwnerNationality');
+const qrOwnerGovId = document.getElementById('qrOwnerGovId');
+const qrOwnerOccupation = document.getElementById('qrOwnerOccupation');
+const qrOwnerAddress = document.getElementById('qrOwnerAddress');
+const qrOwnerPermanentAddress = document.getElementById('qrOwnerPermanentAddress');
+const qrOwnerMailButton = document.getElementById('qrOwnerMailButton');
 const qrOwnerPhoto = document.getElementById('qrOwnerPhoto');
 const qrOwnerPhotoPlaceholder = document.getElementById('qrOwnerPhotoPlaceholder');
+
+if (qrOwnerMailButton) {
+    qrOwnerMailButton.addEventListener('click', () => {
+        const email = (qrOwnerEmail?.textContent || '').trim();
+        if (email && email !== 'Not provided') {
+            window.location.href = `mailto:${email}`;
+        }
+    });
+}
 
 
 
@@ -133,7 +168,9 @@ const views = {
     vaccinations: document.getElementById('vaccinationSection'),
     feedingEvents: document.getElementById('feedingEventsSection'),
     qrScanner: document.getElementById('qrScannerSection'),
-    devices: document.getElementById('devicesSection')
+    devices: document.getElementById('devicesSection'),
+    inventory: document.getElementById('inventorySection'),
+    reports: document.getElementById('reportsSection')
 };
 
 const tokenKey = 'smartvetAccessToken';
@@ -321,6 +358,7 @@ function switchView(viewName) {
     // Start the scanner when its workspace opens.
     // Stop the camera when the user leaves the workspace.
     if (viewName === 'qrScanner') {
+        loadVaccineInventory();
         startQrScanner();
     } else {
         stopQrScanner();
@@ -331,6 +369,7 @@ function switchView(viewName) {
     }
 
     if (viewName === 'vaccinations') {
+        loadVaccineInventory();
         if (approvedPets.length === 0) {
             loadApprovedPets();
         } else {
@@ -347,6 +386,14 @@ if (viewName === 'devices') {
     populateDevicePetOptions();
     loadDevices();
 }
+
+    if (viewName === 'inventory') {
+        loadVaccineInventory();
+    }
+
+    if (viewName === 'reports') {
+        loadClinicReport();
+    }
 
 }
 
@@ -933,6 +980,12 @@ vaccinationForm.addEventListener('submit', async (event) => {
         notes: document.getElementById('vaccinationNotes').value.trim()
     };
 
+    if (vaccinationInventorySelect.value) {
+        payload.inventoryItemId = vaccinationInventorySelect.value;
+        payload.inventoryQuantityUsed =
+            Number(vaccinationInventoryQuantity.value);
+    }
+
     if (nextDueDate) {
         payload.nextDueDate = nextDueDate;
     }
@@ -956,11 +1009,14 @@ vaccinationForm.addEventListener('submit', async (event) => {
         );
 
         vaccinationForm.reset();
+        vaccinationInventoryQuantity.disabled = true;
+        vaccinationInventoryQuantity.value = '1';
 
         administeredDateInput.max = localDateString();
         nextDueDateInput.min = '';
 
         await loadVaccinationHistory(petId);
+        await loadVaccineInventory();
     } catch (error) {
         showMessage(
             vaccinationMessage,
@@ -1291,6 +1347,659 @@ async function loadDevices() {
             refreshDevicesButton.disabled = false;
         }
     }
+}
+
+/* Device Management: register a
+/* Device Management: load registered devices */
+
+async function loadDevices() {
+    if (!dashboardReady || !devicesList) return;
+
+    devicesList.replaceChildren();
+    devicesList.setAttribute('aria-busy', 'true');
+
+    if (deviceManagementMessage) {
+        deviceManagementMessage.textContent = '';
+    }
+
+    const loadingMessage = document.createElement('p');
+    loadingMessage.className = 'muted';
+    loadingMessage.textContent = 'Loading registered devices...';
+    devicesList.appendChild(loadingMessage);
+
+    if (refreshDevicesButton) {
+        refreshDevicesButton.disabled = true;
+    }
+
+    try {
+        const data = await apiRequest('/api/clinic/devices');
+        const devices = Array.isArray(data.devices) ? data.devices : [];
+
+        devicesList.replaceChildren();
+
+        if (devices.length === 0) {
+            const emptyMessage = document.createElement('p');
+            emptyMessage.className = 'muted';
+            emptyMessage.textContent = 'No registered devices found.';
+            devicesList.appendChild(emptyMessage);
+            return;
+        }
+
+        devices.forEach((device) => {
+            const card = document.createElement('article');
+            card.className = 'device-list-item';
+
+            const heading = document.createElement('div');
+            heading.className = 'device-list-heading';
+
+            const title = document.createElement('h3');
+            title.textContent = device.deviceCode || 'Unnamed device';
+
+            const status = document.createElement('span');
+            status.className = `device-status device-status-${device.status}`;
+            status.textContent = device.status || 'Unknown';
+
+            heading.append(title, status);
+            card.appendChild(heading);
+
+            function addDetail(label, value) {
+                const paragraph = document.createElement('p');
+                paragraph.className = 'device-detail';
+
+                const labelElement = document.createElement('strong');
+                labelElement.textContent = `${label}: `;
+
+                const valueElement = document.createElement('span');
+                valueElement.textContent = value || 'Not provided';
+
+                paragraph.append(labelElement, valueElement);
+                card.appendChild(paragraph);
+            }
+
+            const typeLabel = device.deviceType === 'feeder'
+                ? 'Automatic Feeder'
+                : device.deviceType === 'collar'
+                    ? 'Activity Monitoring Collar'
+                    : device.deviceType || 'Unknown';
+
+            addDetail('Device type', typeLabel);
+
+            const assignedPet = device.pet
+                ? `${device.pet.name || 'Unnamed pet'} (${device.pet.petCode || 'No pet code'})`
+                : 'Unassigned';
+
+            addDetail('Assigned pet', assignedPet);
+            addDetail('Firmware version', device.firmwareVersion);
+            addDetail('Description', device.description);
+
+            addDetail(
+                'Registered by',
+                device.registeredBy?.fullName || 'Unknown'
+            );
+
+            addDetail(
+                'Date registered',
+                device.createdAt
+                    ? new Date(device.createdAt).toLocaleString()
+                    : 'Unknown'
+            );
+
+            addDetail(
+                'Last activity',
+                device.lastSeenAt
+                    ? new Date(device.lastSeenAt).toLocaleString()
+                    : 'No activity reported'
+            );
+
+            // Device assignment controls
+            const assignmentPanel = document.createElement('div');
+            assignmentPanel.className = 'device-card-actions';
+
+            const assignmentLabel = document.createElement('label');
+            assignmentLabel.textContent = 'Assign to approved pet';
+
+            const assignmentSelect = document.createElement('select');
+            assignmentSelect.setAttribute(
+                'aria-label',
+                `Assign pet to device ${device.deviceCode}`
+            );
+
+            const unassignedOption = document.createElement('option');
+            unassignedOption.value = '';
+            unassignedOption.textContent = 'Unassigned';
+            assignmentSelect.appendChild(unassignedOption);
+
+            approvedPets.forEach((pet) => {
+                const option = document.createElement('option');
+                option.value = pet.id;
+                option.textContent =
+                    `${pet.petCode || 'No Pet ID'} — ${pet.name} (${pet.species})`;
+
+                if (device.pet && device.pet.id === pet.id) {
+                    option.selected = true;
+                }
+
+                assignmentSelect.appendChild(option);
+            });
+
+            const saveAssignmentButton = document.createElement('button');
+            saveAssignmentButton.type = 'button';
+            saveAssignmentButton.className = 'secondary';
+            saveAssignmentButton.textContent = 'Save Assignment';
+
+            const assignmentIsAllowed = device.status === 'active';
+            assignmentSelect.disabled = !assignmentIsAllowed;
+            saveAssignmentButton.disabled = !assignmentIsAllowed;
+
+            saveAssignmentButton.addEventListener('click', async () => {
+                saveAssignmentButton.disabled = true;
+
+                try {
+                    const result = await apiRequest(
+                        `/api/clinic/devices/${encodeURIComponent(device.id)}/assignment`,
+                        {
+                            method: 'PATCH',
+                            body: JSON.stringify({
+                                petId: assignmentSelect.value || null
+                            })
+                        }
+                    );
+
+                    if (deviceManagementMessage) {
+                        deviceManagementMessage.textContent =
+                            result.message || 'Device assignment updated.';
+                    }
+
+                    await loadDevices();
+                } catch (error) {
+                    if (deviceManagementMessage) {
+                        deviceManagementMessage.textContent =
+                            `Unable to update assignment: ${error.message}`;
+                    }
+
+                    saveAssignmentButton.disabled = !assignmentIsAllowed;
+                }
+            });
+
+            assignmentPanel.append(
+                assignmentLabel,
+                assignmentSelect,
+                saveAssignmentButton
+            );
+
+            card.appendChild(assignmentPanel);
+
+            // Device status controls
+            const statusPanel = document.createElement('div');
+            statusPanel.className = 'device-card-actions';
+
+            const statusLabel = document.createElement('label');
+            statusLabel.textContent = 'Device status';
+
+            const statusSelect = document.createElement('select');
+            statusSelect.setAttribute(
+                'aria-label',
+                `Change status for device ${device.deviceCode}`
+            );
+
+            const allowedStatuses = device.status === 'revoked'
+                ? ['revoked']
+                : ['active', 'disabled', 'revoked'];
+
+            allowedStatuses.forEach((value) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent =
+                    value.charAt(0).toUpperCase() + value.slice(1);
+                option.selected = value === device.status;
+                statusSelect.appendChild(option);
+            });
+
+            const updateStatusButton = document.createElement('button');
+            updateStatusButton.type = 'button';
+            updateStatusButton.className = 'secondary';
+            updateStatusButton.textContent = 'Update Status';
+
+            updateStatusButton.disabled = device.status === 'revoked';
+
+            updateStatusButton.addEventListener('click', async () => {
+                const newStatus = statusSelect.value;
+
+                if (newStatus === device.status) {
+                    if (deviceManagementMessage) {
+                        deviceManagementMessage.textContent =
+                            'The device already has that status.';
+                    }
+                    return;
+                }
+
+                if (device.status === 'revoked') {
+                    if (deviceManagementMessage) {
+                        deviceManagementMessage.textContent =
+                            'Revoked devices cannot be reactivated.';
+                    }
+                    return;
+                }
+
+                if (newStatus === 'revoked') {
+                    const confirmed = window.confirm(
+                        `Permanently revoke device ${device.deviceCode}? ` +
+                        'This action cannot be undone. A replacement must be registered.'
+                    );
+
+                    if (!confirmed) {
+                        statusSelect.value = device.status;
+                        return;
+                    }
+                }
+
+                updateStatusButton.disabled = true;
+
+                try {
+                    const result = await apiRequest(
+                        `/api/clinic/devices/${encodeURIComponent(device.id)}/status`,
+                        {
+                            method: 'PATCH',
+                            body: JSON.stringify({ status: newStatus })
+                        }
+                    );
+
+                    if (deviceManagementMessage) {
+                        deviceManagementMessage.textContent =
+                            result.message || 'Device status updated successfully.';
+                    }
+
+                    await loadDevices();
+                } catch (error) {
+                    if (deviceManagementMessage) {
+                        deviceManagementMessage.textContent =
+                            `Unable to update device status: ${error.message}`;
+                    }
+
+                    updateStatusButton.disabled = false;
+                }
+            });
+
+            statusPanel.append(
+                statusLabel,
+                statusSelect,
+                updateStatusButton
+            );
+
+            card.appendChild(statusPanel);
+
+            devicesList.appendChild(card);
+        });
+    } catch (error) {
+        devicesList.replaceChildren();
+
+        const errorMessage = document.createElement('p');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent =
+            `Unable to load devices: ${error.message}`;
+
+        devicesList.appendChild(errorMessage);
+    } finally {
+        devicesList.setAttribute('aria-busy', 'false');
+
+        if (refreshDevicesButton) {
+            refreshDevicesButton.disabled = false;
+        }
+    }
+}
+
+let clinicReportData = null;
+let vaccineInventoryLots = [];
+
+function isInventoryLotUsable(item) {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    return item.stockQuantity > 0 && new Date(item.expiryDate) >= today;
+}
+
+function updateVaccinationInventoryOptions() {
+    [vaccinationInventorySelect, qrVaccinationInventorySelect].forEach((select) => {
+        if (!select) return;
+
+        const selectedValue = select.value;
+        select.replaceChildren();
+        const noInventory = document.createElement('option');
+        noInventory.value = '';
+        noInventory.textContent = 'Record without inventory tracking';
+        select.appendChild(noInventory);
+
+        vaccineInventoryLots.filter(isInventoryLotUsable).forEach((item) => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent =
+                `${item.vaccineName} · ${item.batchNumber} · ${item.stockQuantity} dose(s)`;
+            select.appendChild(option);
+        });
+
+        if (vaccineInventoryLots.some((item) =>
+            item.id === selectedValue && isInventoryLotUsable(item)
+        )) {
+            select.value = selectedValue;
+        }
+    });
+}
+
+function setVaccinationInventorySelection(select, quantityInput, formPrefix) {
+    if (!select || !quantityInput) return;
+    const selected = vaccineInventoryLots.find((item) => item.id === select.value);
+    quantityInput.disabled = !selected;
+    const vaccineNameInput = document.getElementById(
+        formPrefix ? `${formPrefix}VaccineName` : 'vaccineName'
+    );
+    const batchInput = document.getElementById(
+        formPrefix ? `${formPrefix}BatchNumber` : 'batchNumber'
+    );
+    const manufacturerInput = document.getElementById(
+        formPrefix ? `${formPrefix}Manufacturer` : 'manufacturer'
+    );
+    if (!selected) {
+        const previous = vaccineInventoryLots.find(
+            (item) => item.id === select.dataset.inventoryItemId
+        );
+        if (previous) {
+            if (vaccineNameInput?.value === previous.vaccineName) vaccineNameInput.value = '';
+            if (batchInput?.value === previous.batchNumber) batchInput.value = '';
+            if (manufacturerInput?.value === previous.manufacturer) manufacturerInput.value = '';
+        }
+        select.dataset.inventoryItemId = '';
+        return;
+    }
+
+    if (vaccineNameInput) vaccineNameInput.value = selected.vaccineName;
+    if (batchInput) batchInput.value = selected.batchNumber;
+    if (manufacturerInput) manufacturerInput.value = selected.manufacturer;
+    select.dataset.inventoryItemId = selected.id;
+}
+
+function renderVaccineInventory() {
+    if (!vaccineInventoryList) return;
+    vaccineInventoryList.replaceChildren();
+
+    if (vaccineInventoryLots.length === 0) {
+        addText(vaccineInventoryList, 'p', 'No vaccine lots are recorded yet.', 'muted');
+        return;
+    }
+
+    vaccineInventoryLots.forEach((item) => {
+        const card = document.createElement('article');
+        card.className = 'inventory-card';
+        const heading = document.createElement('div');
+        heading.className = 'inventory-card-heading';
+        addText(heading, 'h3', item.vaccineName);
+        const badge = document.createElement('span');
+        badge.className = `inventory-status ${item.stockStatus.replace(/_/g, '-')}`;
+        badge.textContent = item.stockStatus.replace(/_/g, ' ');
+        heading.appendChild(badge);
+
+        addText(card, 'div', `${item.manufacturer} · Lot ${item.batchNumber}`, 'muted');
+        addText(card, 'p', `Expiry: ${formatDate(item.expiryDate)}`);
+        addText(card, 'p', `Stock: ${item.stockQuantity} dose(s) · Low-stock alert: ${item.lowStockThreshold}`);
+        if (item.notes) addText(card, 'p', item.notes, 'muted');
+
+        const adjustForm = document.createElement('form');
+        adjustForm.className = 'inventory-adjust-form';
+        const amount = document.createElement('input');
+        amount.type = 'number';
+        amount.step = '1';
+        amount.required = true;
+        amount.setAttribute('aria-label', `Dose adjustment for ${item.vaccineName}`);
+        amount.placeholder = '+ received / - removed';
+        const reason = document.createElement('input');
+        reason.type = 'text';
+        reason.maxLength = 250;
+        reason.required = true;
+        reason.setAttribute('aria-label', `Adjustment reason for ${item.vaccineName}`);
+        reason.placeholder = 'Reason';
+        const adjustButton = document.createElement('button');
+        adjustButton.type = 'submit';
+        adjustButton.className = 'secondary';
+        adjustButton.textContent = 'Adjust stock';
+        adjustForm.append(amount, reason, adjustButton);
+        adjustForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const quantityChange = Number(amount.value);
+            if (!Number.isInteger(quantityChange) || quantityChange === 0) {
+                showMessage(vaccineInventoryMessage, 'Enter a non-zero whole number of doses.', 'error');
+                return;
+            }
+
+            adjustButton.disabled = true;
+            try {
+                await apiRequest(
+                    `/api/clinic/vaccine-inventory/${encodeURIComponent(item.id)}/adjust`,
+                    {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            quantityChange,
+                            reason: reason.value.trim()
+                        })
+                    }
+                );
+                showMessage(vaccineInventoryMessage, 'Inventory adjustment saved.', 'success');
+                await loadVaccineInventory();
+            } catch (error) {
+                showMessage(vaccineInventoryMessage, error.message, 'error');
+                adjustButton.disabled = false;
+            }
+        });
+        card.appendChild(adjustForm);
+
+        if (item.movements.length) {
+            const history = document.createElement('details');
+            const summary = document.createElement('summary');
+            summary.textContent = 'Recent stock movements';
+            history.appendChild(summary);
+            item.movements.forEach((movement) => {
+                const line = document.createElement('p');
+                const sign = movement.quantityChange > 0 ? '+' : '';
+                line.textContent =
+                    `${formatDate(movement.createdAt)} · ${movement.type.replace(/_/g, ' ')} · ${sign}${movement.quantityChange} dose(s) · ${movement.reason || 'No reason recorded'}`;
+                history.appendChild(line);
+            });
+            card.appendChild(history);
+        }
+        vaccineInventoryList.appendChild(card);
+    });
+}
+
+async function loadVaccineInventory() {
+    if (!vaccineInventoryList) return;
+    vaccineInventoryList.setAttribute('aria-busy', 'true');
+    try {
+        const data = await apiRequest('/api/clinic/vaccine-inventory');
+        vaccineInventoryLots = Array.isArray(data.inventory) ? data.inventory : [];
+        renderVaccineInventory();
+        updateVaccinationInventoryOptions();
+    } catch (error) {
+        vaccineInventoryList.replaceChildren();
+        addText(
+            vaccineInventoryList,
+            'p',
+            error.message || 'Unable to load vaccine inventory.',
+            'error'
+        );
+    } finally {
+        vaccineInventoryList.setAttribute('aria-busy', 'false');
+    }
+}
+
+if (vaccineInventoryForm) {
+    vaccineInventoryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        saveVaccineInventoryButton.disabled = true;
+        const payload = Object.fromEntries(new FormData(vaccineInventoryForm).entries());
+
+        try {
+            const data = await apiRequest('/api/clinic/vaccine-inventory', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            vaccineInventoryForm.reset();
+            document.getElementById('inventoryLowStockThreshold').value = '5';
+            showMessage(vaccineInventoryMessage, data.message, 'success');
+            await loadVaccineInventory();
+        } catch (error) {
+            showMessage(vaccineInventoryMessage, error.message, 'error');
+        } finally {
+            saveVaccineInventoryButton.disabled = false;
+        }
+    });
+}
+
+if (refreshVaccineInventoryButton) {
+    refreshVaccineInventoryButton.addEventListener('click', loadVaccineInventory);
+}
+
+if (vaccinationInventorySelect) {
+    vaccinationInventorySelect.addEventListener('change', () =>
+        setVaccinationInventorySelection(
+            vaccinationInventorySelect,
+            vaccinationInventoryQuantity,
+            ''
+        )
+    );
+}
+
+if (qrVaccinationInventorySelect) {
+    qrVaccinationInventorySelect.addEventListener('change', () =>
+        setVaccinationInventorySelection(
+            qrVaccinationInventorySelect,
+            qrVaccinationInventoryQuantity,
+            'qr'
+        )
+    );
+}
+
+function formatReportCell(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    const date = new Date(value);
+    return !Number.isNaN(date.getTime()) &&
+        /^\d{4}-\d{2}-\d{2}/.test(String(value))
+        ? formatDate(value)
+        : String(value);
+}
+
+function renderClinicReport(report) {
+    if (!clinicReportResults) return;
+    clinicReportResults.replaceChildren();
+    if (!report.rows.length) {
+        addText(clinicReportResults, 'p', 'No records match this report.', 'muted');
+        return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'clinic-report-table';
+    const head = document.createElement('thead');
+    const headingRow = document.createElement('tr');
+    report.columns.forEach((column) => addText(headingRow, 'th', column));
+    head.appendChild(headingRow);
+    table.appendChild(head);
+    const body = document.createElement('tbody');
+    report.rows.forEach((row) => {
+        const tableRow = document.createElement('tr');
+        row.forEach((cell) => addText(tableRow, 'td', formatReportCell(cell)));
+        body.appendChild(tableRow);
+    });
+    table.appendChild(body);
+    clinicReportResults.appendChild(table);
+
+    if (report.truncated) {
+        addText(
+            clinicReportResults,
+            'p',
+            'Showing the first 5,000 matching rows. Narrow the date range to export a complete report.',
+            'muted'
+        );
+    }
+}
+
+async function loadClinicReport() {
+    if (!clinicReportForm) return;
+    const params = new URLSearchParams({ type: clinicReportType.value });
+    if (clinicReportFrom.value) params.set('from', clinicReportFrom.value);
+    if (clinicReportTo.value) params.set('to', clinicReportTo.value);
+
+    runClinicReportButton.disabled = true;
+    exportClinicReportButton.disabled = true;
+    showMessage(clinicReportMessage, 'Generating report...');
+    clinicReportResults.replaceChildren();
+
+    try {
+        clinicReportData = await apiRequest(`/api/clinic/reports?${params}`);
+        renderClinicReport(clinicReportData);
+        exportClinicReportButton.disabled = false;
+        showMessage(
+            clinicReportMessage,
+            `${clinicReportData.count} record(s) found.`,
+            'success'
+        );
+    } catch (error) {
+        clinicReportData = null;
+        addText(
+            clinicReportResults,
+            'p',
+            error.message || 'Unable to generate report.',
+            'error'
+        );
+        showMessage(
+            clinicReportMessage,
+            error.message || 'Unable to generate report.',
+            'error'
+        );
+    } finally {
+        runClinicReportButton.disabled = false;
+    }
+}
+
+if (clinicReportForm) {
+    clinicReportForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        loadClinicReport();
+    });
+}
+
+if (clinicReportType) {
+    const updateReportDateFilters = () => {
+        const isInventoryReport = clinicReportType.value === 'inventory';
+        clinicReportFrom.disabled = isInventoryReport;
+        clinicReportTo.disabled = isInventoryReport;
+        if (isInventoryReport) {
+            clinicReportFrom.value = '';
+            clinicReportTo.value = '';
+        }
+    };
+    clinicReportType.addEventListener('change', updateReportDateFilters);
+    updateReportDateFilters();
+}
+
+if (exportClinicReportButton) {
+    exportClinicReportButton.addEventListener('click', () => {
+        if (!clinicReportData) return;
+        const escapeCsv = (value) => {
+            let text = value === null || value === undefined ? '' : String(value);
+            if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
+            return `"${text.replace(/"/g, '""')}"`;
+        };
+        const lines = [
+            clinicReportData.columns,
+            ...clinicReportData.rows
+        ].map((row) => row.map(escapeCsv).join(','));
+        const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], {
+            type: 'text/csv;charset=utf-8'
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download =
+            `smartvet-${clinicReportData.type}-${localDateString()}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    });
 }
 
 /* Device Management: register a device */
@@ -1779,41 +2488,81 @@ function openQrOwnerDetails() {
 
     if (!owner) {
         if (qrScannerStatus) {
-            showMessage(
-                qrScannerStatus,
-                'Owner information is unavailable for this pet.',
-                'error'
-            );
+            showMessage(qrScannerStatus, 'Owner information is unavailable for this pet.', 'error');
         }
         return;
     }
+
+    // 1. Populate the text
+    const setDetail = (element, value) => {
+        if (element) {
+            element.textContent = value || 'Not provided';
+        }
+    };
 
     if (qrOwnerName) {
         qrOwnerName.textContent = owner.fullName || 'Name unavailable';
     }
 
-    if (qrOwnerEmail) {
-        qrOwnerEmail.textContent = `Email: ${owner.email || 'Not provided'}`;
-    }
+    setDetail(qrOwnerEmail, owner.email);
+    setDetail(qrOwnerPhone, owner.phone);
+    setDetail(qrOwnerDateOfBirth, owner.dateOfBirth);
+    setDetail(qrOwnerGender, owner.gender);
+    setDetail(qrOwnerCivilStatus, owner.civilStatus);
+    setDetail(qrOwnerNationality, owner.nationality);
+    setDetail(qrOwnerGovId, owner.govId);
+    setDetail(qrOwnerOccupation, owner.occupation);
+    setDetail(qrOwnerAddress, owner.address);
+    setDetail(qrOwnerPermanentAddress, owner.permanentAddress);
 
-    if (qrOwnerPhone) {
-        qrOwnerPhone.textContent = `Phone: ${owner.phone || 'Not provided'}`;
-    }
-
-    // User.js currently has no owner-photo field.
-    if (qrOwnerPhoto) {
-        qrOwnerPhoto.removeAttribute('src');
-        qrOwnerPhoto.hidden = true;
-    }
-
-    if (qrOwnerPhotoPlaceholder) {
-        qrOwnerPhotoPlaceholder.hidden = false;
-        qrOwnerPhotoPlaceholder.textContent =
-            'Owner photo is not registered in SmartVet.';
+    // 2. Handle the profile photo
+    if (owner.hasProfilePhoto && owner.photoEndpoint) {
+        loadScannedOwnerPhoto(owner.photoEndpoint);
+    } else {
+        if (qrOwnerPhoto) {
+            qrOwnerPhoto.removeAttribute('src');
+            qrOwnerPhoto.hidden = true;
+        }
+        if (qrOwnerPhotoPlaceholder) {
+            qrOwnerPhotoPlaceholder.hidden = false;
+        }
     }
 
     if (!qrOwnerDetailsDialog.open) {
         qrOwnerDetailsDialog.showModal();
+    }
+}
+
+// NEW FUNCTION: Load the scanned owner's photo from the clinic endpoint
+async function loadScannedOwnerPhoto(photoEndpoint) {
+    try {
+        const response = await fetch(photoEndpoint, {
+            headers: {
+                Authorization: `Bearer ${getToken()}`,
+                Accept: 'image/jpeg, image/png, image/webp'
+            },
+            cache: 'no-store'
+        });
+
+        if (!response.ok) throw new Error('Photo unavailable');
+
+        const imageBlob = await response.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+
+        if (qrOwnerPhoto) {
+            qrOwnerPhoto.src = imageUrl;
+            qrOwnerPhoto.hidden = false;
+        }
+        if (qrOwnerPhotoPlaceholder) {
+            qrOwnerPhotoPlaceholder.hidden = true;
+        }
+    } catch {
+        if (qrOwnerPhoto) {
+            qrOwnerPhoto.hidden = true;
+        }
+        if (qrOwnerPhotoPlaceholder) {
+            qrOwnerPhotoPlaceholder.hidden = false;
+        }
     }
 }
 
@@ -1929,6 +2678,12 @@ if (qrVaccinationForm) {
                 document.getElementById('qrVaccinationNotes').value.trim()
         };
 
+        if (qrVaccinationInventorySelect.value) {
+            payload.inventoryItemId = qrVaccinationInventorySelect.value;
+            payload.inventoryQuantityUsed =
+                Number(qrVaccinationInventoryQuantity.value);
+        }
+
         if (nextDueDate) {
             payload.nextDueDate = nextDueDate;
         }
@@ -1952,6 +2707,9 @@ if (qrVaccinationForm) {
             );
 
             qrVaccinationForm.reset();
+            qrVaccinationInventoryQuantity.disabled = true;
+            qrVaccinationInventoryQuantity.value = '1';
+            await loadVaccineInventory();
 
             const administeredInput =
                 document.getElementById('qrAdministeredDate');
@@ -2353,7 +3111,6 @@ if (copyDeviceTokenButton) {
     }, 400);
 });
 })();
-
 
 switchView('overview');
 verifyVeterinarySession();

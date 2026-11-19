@@ -22,6 +22,7 @@ const deviceRoutes = require('./src/routes/deviceRoutes');
 const feedingScheduleRoutes = require('./src/routes/feedingScheduleRoutes');
 const feedingEventRoutes = require('./src/routes/feedingEventRoutes');
 const iotRoutes = require('./src/routes/iotRoutes');
+const vaccineInventoryRoutes = require('./src/routes/vaccineInventoryRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -52,6 +53,7 @@ app.use('/api/auth', authRoutes);
 // Role-protected API areas.
 app.use('/api/admin', adminRoutes);
 app.use('/api/clinic/devices', deviceRoutes);
+app.use('/api/clinic/vaccine-inventory', vaccineInventoryRoutes);
 app.use('/api/clinic/feeding-schedules', feedingScheduleRoutes);
 app.use('/api/clinic/feeding-events', feedingEventRoutes);
 app.use('/api/iot', iotRoutes);

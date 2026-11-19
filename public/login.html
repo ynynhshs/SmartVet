@@ -14,7 +14,7 @@
 
             <section class="login-form-side">
                 <div class="brand-pill">
-                    <span class="brand-pill-text">SmartVet</span>
+                    <span class="brand-pill-text">🐾 SmartVet</span>
                 </div>
 
                 <!-- Existing login view -->
@@ -79,91 +79,145 @@
 
                 <!-- New owner registration view -->
                 <div id="registerView" hidden>
-                    <div class="form-header">
-                        <h1>Create account</h1>
-                        <p>Register your owner account to manage your pets.</p>
+                    <form id="registerForm" enctype="multipart/form-data">
+                    <div class="register-top">
+                        <div class="profile-photo-upload-container">
+                            <div
+                                class="avatar-preview-circle"
+                                id="registerAvatarPreview"
+                                role="button"
+                                tabindex="0"
+                                aria-label="Upload or change profile photo"
+                                title="Upload profile photo"
+                            >
+                                <span id="registerAvatarInitials">🐾</span>
+                                <img id="registerAvatarImage" alt="Selected profile photo preview" hidden>
+                                <span class="avatar-camera-badge" aria-hidden="true">📷</span>
+                            </div>
+                            <label for="registerProfilePhoto" class="photo-upload-label">
+                                Upload photo
+                            </label>
+                            <input
+                                type="file"
+                                id="registerProfilePhoto"
+                                name="profilePhoto"
+                                accept="image/jpeg, image/png, image/webp"
+                                hidden
+                            >
+                        </div>
+
+                        <div class="form-header">
+                            <h1>Create account</h1>
+                            <p>Register your owner account to manage your pets.</p>
+                            <p class="form-header-note"><span class="req">*</span> Required fields</p>
+                        </div>
                     </div>
 
-                    <form id="registerForm">
-                        <div class="form-field">
-                            <label for="registerFullName">Full name</label>
-                            <input
-                                id="registerFullName"
-                                name="fullName"
-                                type="text"
-                                placeholder="Enter your full name"
-                                autocomplete="name"
-                                minlength="2"
-                                maxlength="120"
-                                required
-                            >
+                        <div class="form-section-title">
+                            <span class="step-badge">1</span>Personal details
                         </div>
 
                         <div class="form-field">
-                            <label for="registerEmail">Email</label>
-                            <input
-                                id="registerEmail"
-                                name="email"
-                                type="email"
-                                placeholder="Enter your email"
-                                autocomplete="email"
-                                maxlength="254"
-                                required
-                            >
+                            <label for="registerFullName">Full name <span class="req">*</span></label>
+                            <input id="registerFullName" name="fullName" type="text" placeholder="e.g. Juan Dela Cruz" autocomplete="name" minlength="2" maxlength="120" required>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label for="registerDob">Date of birth</label>
+                                <input id="registerDob" name="dateOfBirth" type="date">
+                            </div>
+                            <div class="form-field">
+                                <label for="registerGender">Sex / Gender</label>
+                                <select id="registerGender" name="gender">
+                                    <option value="">Select...</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Prefer not to say">Prefer not to say</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label for="registerCivilStatus">Civil / Marital Status</label>
+                                <select id="registerCivilStatus" name="civilStatus">
+                                    <option value="">Select...</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Widowed">Widowed</option>
+                                    <option value="Separated">Separated</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="registerNationality">Nationality / Citizenship</label>
+                                <input id="registerNationality" name="nationality" type="text" placeholder="e.g. Filipino" maxlength="100">
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label for="registerGovId">Government / ID Number</label>
+                                <input id="registerGovId" name="govId" type="text" placeholder="PhilSys / TIN / Driver's License" maxlength="100">
+                            </div>
+                            <div class="form-field">
+                                <label for="registerOccupation">Occupation / Student Status</label>
+                                <select id="registerOccupation" name="occupation">
+                                    <option value="">Select...</option>
+                                    <option value="Employed">Employed</option>
+                                    <option value="Self-Employed">Self-Employed</option>
+                                    <option value="Student">Student</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-section-title">
+                            <span class="step-badge">2</span>Contact &amp; address
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label for="registerEmail">Email <span class="req">*</span></label>
+                                <input id="registerEmail" name="email" type="email" placeholder="juan.delacruz@example.com" autocomplete="email" maxlength="254" required>
+                            </div>
+
+                            <div class="form-field">
+                                <label for="registerPhone">Mobile number</label>
+                                <input id="registerPhone" name="phone" type="tel" placeholder="+63 9XX XXX XXXX" autocomplete="tel" maxlength="30">
+                            </div>
                         </div>
 
                         <div class="form-field">
-                            <label for="registerPhone">Phone number</label>
-                            <input
-                                id="registerPhone"
-                                name="phone"
-                                type="tel"
-                                placeholder="Enter your phone number"
-                                autocomplete="tel"
-                                maxlength="30"
-                            >
+                            <label for="registerAddress">Current address</label>
+                            <input id="registerAddress" name="address" type="text" placeholder="House/Unit No., Street, Barangay, City/Municipality, Province" autocomplete="street-address" maxlength="250">
                         </div>
 
                         <div class="form-field">
-                            <label for="registerPassword">Password</label>
-                            <input
-                                id="registerPassword"
-                                name="password"
-                                type="password"
-                                placeholder="At least 8 characters"
-                                autocomplete="new-password"
-                                minlength="8"
-                                required
-                            >
+                            <label for="registerPermanentAddress">Permanent Address</label>
+                            <input id="registerPermanentAddress" name="permanentAddress" type="text" placeholder="Same as above / [Specify address]" maxlength="250">
                         </div>
 
-                        <div class="form-field">
-                            <label for="confirmPassword">Confirm password</label>
-                            <input
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                type="password"
-                                placeholder="Re-enter your password"
-                                autocomplete="new-password"
-                                minlength="8"
-                                required
-                            >
+                        <div class="form-section-title">
+                            <span class="step-badge">3</span>Account security
                         </div>
 
-                        <button
-                            class="primary-button submit-btn"
-                            id="registerButton"
-                            type="submit"
-                        >
+                        <div class="form-grid-2">
+                            <div class="form-field">
+                                <label for="registerPassword">Password <span class="req">*</span></label>
+                                <input id="registerPassword" name="password" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required>
+                            </div>
+
+                            <div class="form-field">
+                                <label for="confirmPassword">Confirm password <span class="req">*</span></label>
+                                <input id="confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter your password" autocomplete="new-password" minlength="8" required>
+                            </div>
+                        </div>
+
+                        <button class="primary-button submit-btn" id="registerButton" type="submit">
                             Create owner account
                         </button>
 
-                        <p
-                            id="registerMessage"
-                            class="form-message"
-                            role="status"
-                            aria-live="polite"
-                        ></p>
+                        <p id="registerMessage" class="form-message" role="status" aria-live="polite"></p>
                     </form>
 
                     <div class="form-footer">

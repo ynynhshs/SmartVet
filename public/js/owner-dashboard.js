@@ -14,6 +14,9 @@ const petList = document.getElementById('petList');
 const refreshNotificationsButton = document.getElementById('refreshNotificationsButton');
 const notificationsSummary = document.getElementById('notificationsSummary');
 const ownerNotificationList = document.getElementById('ownerNotificationList');
+const ownerVaccinationsList = document.getElementById('ownerVaccinationsList');
+const ownerVaccinationsMessage = document.getElementById('ownerVaccinationsMessage');
+const refreshOwnerVaccinationsButton = document.getElementById('refreshOwnerVaccinationsButton');
 
 // Owner Feeding History
 const refreshOwnerFeedingEventsButton = document.getElementById('refreshOwnerFeedingEventsButton');
@@ -185,11 +188,224 @@ document.querySelectorAll('.quick-action').forEach((button) => {
     });
 });
 
+const ownerVaccinationsNavigationButton = document.querySelector(
+    '.nav-item[data-view="vaccinations"]'
+);
+if (ownerVaccinationsNavigationButton) {
+    ownerVaccinationsNavigationButton.addEventListener(
+        'click',
+        loadOwnerVaccinations
+    );
+}
+
+if (refreshOwnerVaccinationsButton) {
+    refreshOwnerVaccinationsButton.addEventListener(
+        'click',
+        loadOwnerVaccinations
+    );
+}
+
 function showMessage(element, message, type = '') {
     if (!element) return;
     element.textContent = message;
     element.classList.remove('error', 'success');
     if (type) element.classList.add(type);
+}
+
+function formatOwnerVaccinationDate(value) {
+    if (!value) return 'Not scheduled';
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+        ? 'Not available'
+        : date.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+}
+
+function getOwnerVaccinationFollowUp(record) {
+    if (!record.nextDueDate) {
+        return { label: 'No follow-up scheduled', className: 'no-follow-up' };
+    }
+
+    const dueDate = new Date(record.nextDueDate).toISOString().slice(0, 10);
+    const todayDate = new Date();
+    const today = [
+        todayDate.getFullYear(),
+        String(todayDate.getMonth() + 1).padStart(2, '0'),
+        String(todayDate.getDate()).padStart(2, '0')
+    ].join('-');
+
+    if (dueDate < today) return { label: 'Overdue', className: 'overdue' };
+
+    const daysUntilDue = Math.ceil(
+        (new Date(`${dueDate}T00:00:00`) - new Date(`${today}T00:00:00`)) /
+        (24 * 60 * 60 * 1000)
+    );
+
+    return daysUntilDue <= 30
+        ? { label: 'Due soon', className: 'due-soon' }
+        : { label: 'Upcoming', className: 'upcoming' };
+}
+
+function printOwnerVaccinationCertificate(record) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showMessage(
+            ownerVaccinationsMessage,
+            'Allow pop-ups to print the vaccination certificate.',
+            'error'
+        );
+        return;
+    }
+
+    printWindow.opener = null;
+    const escapeHtml = (value) => String(value || 'Not provided')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    const pet = record.pet || {};
+    const title = `${pet.name || 'Pet'} - ${record.vaccineName || 'Vaccination'}`;
+
+    printWindow.document.write(`<!doctype html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>${escapeHtml(title)} vaccination certificate</title>
+            <style>
+                * { box-sizing: border-box; }
+                body { margin: 0; padding: 40px; color: #18324b; font: 16px/1.5 Arial, sans-serif; }
+                main { max-width: 760px; margin: 0 auto; padding: 42px; border: 2px solid #2389e0; border-radius: 18px; }
+                header { padding-bottom: 22px; border-bottom: 1px solid #d5e2ef; }
+                .brand { color: #2389e0; font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+                h1 { margin: 8px 0; font-size: 30px; }
+                .intro, footer { color: #557087; }
+                dl { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 28px 0; }
+                dl div { padding: 12px; background: #f2f7fb; border-radius: 10px; }
+                dt { color: #557087; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+                dd { margin: 5px 0 0; overflow-wrap: anywhere; font-weight: 600; }
+                footer { padding-top: 18px; border-top: 1px solid #d5e2ef; font-size: 12px; }
+                @media print { body { padding: 0; } main { border: 2px solid #2389e0; } }
+                @media (max-width: 560px) { body { padding: 12px; } main { padding: 22px; } dl { grid-template-columns: 1fr; } }
+            </style>
+        </head>
+        <body>
+            <main>
+                <header>
+                    <div class="brand">SMARTVET · PET HEALTH RECORD</div>
+                    <h1>Vaccination Certificate</h1>
+                    <p class="intro">This certificate documents a vaccination recorded by the veterinary clinic.</p>
+                </header>
+                <dl>
+                    <div><dt>Pet</dt><dd>${escapeHtml(pet.name)}</dd></div>
+                    <div><dt>Official Pet ID</dt><dd>${escapeHtml(pet.petCode)}</dd></div>
+                    <div><dt>Species</dt><dd>${escapeHtml(pet.species)}</dd></div>
+                    <div><dt>Vaccine</dt><dd>${escapeHtml(record.vaccineName)}</dd></div>
+                    <div><dt>Date administered</dt><dd>${escapeHtml(formatOwnerVaccinationDate(record.administeredDate))}</dd></div>
+                    <div><dt>Next due date</dt><dd>${escapeHtml(formatOwnerVaccinationDate(record.nextDueDate))}</dd></div>
+                    <div><dt>Manufacturer</dt><dd>${escapeHtml(record.manufacturer)}</dd></div>
+                    <div><dt>Batch / lot</dt><dd>${escapeHtml(record.batchNumber)}</dd></div>
+                    <div><dt>Dosage</dt><dd>${escapeHtml(record.dosage)}</dd></div>
+                    <div><dt>Veterinary staff</dt><dd>${escapeHtml(record.administeredBy)}</dd></div>
+                </dl>
+                <footer>Generated from the SmartVet owner portal. For corrections or medical advice, contact your veterinary clinic.</footer>
+            </main>
+            <script>window.addEventListener('load', () => window.print(), { once: true });</script>
+        </body>
+        </html>`);
+    printWindow.document.close();
+}
+
+async function loadOwnerVaccinations() {
+    if (!ownerVaccinationsList) return;
+
+    refreshOwnerVaccinationsButton.disabled = true;
+    showMessage(ownerVaccinationsMessage, 'Loading your vaccination records...');
+    ownerVaccinationsList.replaceChildren(createSkeletonLoader(2));
+
+    try {
+        const data = await apiRequest('/api/owner/vaccinations');
+        const records = Array.isArray(data.vaccinations)
+            ? data.vaccinations
+            : [];
+        ownerVaccinationsList.replaceChildren();
+
+        if (records.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'empty-state';
+            empty.textContent =
+                'No vaccination records are available for your approved pets yet.';
+            ownerVaccinationsList.appendChild(empty);
+            showMessage(ownerVaccinationsMessage, 'No vaccination follow-ups found.');
+            return;
+        }
+
+        records.forEach((record) => {
+            const card = document.createElement('article');
+            card.className = 'owner-follow-up-card';
+
+            const pet = record.pet || {};
+            const heading = document.createElement('h2');
+            heading.textContent = `${pet.name || 'Your pet'} · ${record.vaccineName || 'Vaccination'}`;
+
+            const petInfo = document.createElement('p');
+            petInfo.className = 'muted';
+            petInfo.textContent = [
+                pet.species || 'Pet',
+                pet.petCode ? `ID ${pet.petCode}` : ''
+            ].filter(Boolean).join(' · ');
+
+            const followUp = getOwnerVaccinationFollowUp(record);
+            const status = document.createElement('span');
+            status.className = `owner-follow-up-status ${followUp.className}`;
+            status.textContent = followUp.label;
+
+            const dates = document.createElement('div');
+            dates.className = 'owner-follow-up-dates';
+            const administered = document.createElement('p');
+            administered.textContent =
+                `Administered: ${formatOwnerVaccinationDate(record.administeredDate)}`;
+            const due = document.createElement('p');
+            due.textContent = `Next due: ${formatOwnerVaccinationDate(record.nextDueDate)}`;
+
+            const printButton = document.createElement('button');
+            printButton.type = 'button';
+            printButton.className = 'secondary-button';
+            printButton.textContent = 'Print certificate';
+            printButton.addEventListener('click', () =>
+                printOwnerVaccinationCertificate(record)
+            );
+
+            dates.append(administered, due);
+            card.append(heading, petInfo, status, dates, printButton);
+            ownerVaccinationsList.appendChild(card);
+        });
+
+        showMessage(
+            ownerVaccinationsMessage,
+            `${records.length} vaccination record(s) loaded.`,
+            'success'
+        );
+    } catch (error) {
+        ownerVaccinationsList.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'message error';
+        message.textContent =
+            error.message || 'Unable to load your vaccination records.';
+        ownerVaccinationsList.appendChild(message);
+        showMessage(
+            ownerVaccinationsMessage,
+            error.message || 'Unable to load your vaccination records.',
+            'error'
+        );
+    } finally {
+        refreshOwnerVaccinationsButton.disabled = false;
+    }
 }
 
 // --- NEW SKELETON LOADER FUNCTION ---
@@ -1334,6 +1550,13 @@ const accountFullName = document.getElementById('accountFullName');
 const accountEmail = document.getElementById('accountEmail');
 const accountPhone = document.getElementById('accountPhone');
 const accountAddress = document.getElementById('accountAddress');
+const accountPermanentAddress = document.getElementById('accountPermanentAddress');
+const accountDateOfBirth = document.getElementById('accountDateOfBirth');
+const accountGender = document.getElementById('accountGender');
+const accountCivilStatus = document.getElementById('accountCivilStatus');
+const accountNationality = document.getElementById('accountNationality');
+const accountGovId = document.getElementById('accountGovId');
+const accountOccupation = document.getElementById('accountOccupation');
 const accountProfileMessage = document.getElementById('accountProfileMessage');
 const saveAccountProfileButton = document.getElementById('saveAccountProfileButton');
 
@@ -1361,6 +1584,25 @@ function updateAccountInitials(fullName) {
         .join('');
 
     accountProfileInitials.textContent = initials || '👤';
+}
+
+function displayOwnerProfile(user) {
+    accountFullName.value = user.fullName || '';
+    accountEmail.value = user.email || '';
+    accountPhone.value = user.phone || '';
+    accountAddress.value = user.address || '';
+    accountPermanentAddress.value = user.permanentAddress || '';
+    accountDateOfBirth.value = user.dateOfBirth || '';
+    accountGender.value = user.gender || '';
+    accountCivilStatus.value = user.civilStatus || '';
+    accountNationality.value = user.nationality || '';
+    accountGovId.value = user.govId || '';
+    accountOccupation.value = user.occupation || '';
+
+    updateAccountInitials(user.fullName);
+    if (welcomeHeading) {
+        welcomeHeading.textContent = `Welcome, ${user.fullName || 'Pet Owner'}`;
+    }
 }
 
 // Live Photo Selection & Preview Handler
@@ -1456,12 +1698,7 @@ async function loadOwnerProfile() {
         const data = await apiRequest('/api/owner/profile');
         const user = data.user;
 
-        accountFullName.value = user.fullName || '';
-        accountEmail.value = user.email || '';
-        accountPhone.value = user.phone || '';
-        accountAddress.value = user.address || '';
-
-        updateAccountInitials(user.fullName);
+        displayOwnerProfile(user);
         showMessage(accountProfileMessage, '');
 
         if (user.hasProfilePhoto) {
@@ -1498,17 +1735,10 @@ if (accountProfileForm) {
         saveAccountProfileButton.disabled = true;
         saveAccountProfileButton.textContent = 'Saving...';
 
-        try {
-            const formData = new FormData();
-            formData.append('fullName', accountFullName.value.trim());
-            formData.append('email', accountEmail.value.trim());
-            formData.append('phone', accountPhone.value.trim());
-            formData.append('address', accountAddress.value.trim());
+        let profileSaved = false;
 
+        try {
             const file = accountPhotoInput?.files?.[0];
-            if (file) {
-                formData.append('profilePhoto', file);
-            }
 
             // 1. Save profile text details (PATCH)
             const profileData = await apiRequest('/api/owner/profile', {
@@ -1517,9 +1747,18 @@ if (accountProfileForm) {
                     fullName: accountFullName.value.trim(),
                     email: accountEmail.value.trim(),
                     phone: accountPhone.value.trim(),
-                    address: accountAddress.value.trim()
+                    address: accountAddress.value.trim(),
+                    permanentAddress: accountPermanentAddress.value.trim(),
+                    dateOfBirth: accountDateOfBirth.value,
+                    gender: accountGender.value,
+                    civilStatus: accountCivilStatus.value,
+                    nationality: accountNationality.value.trim(),
+                    govId: accountGovId.value.trim(),
+                    occupation: accountOccupation.value
                 })
             });
+            displayOwnerProfile(profileData.user);
+            profileSaved = true;
 
             // 2. Upload photo if selected (POST)
             if (file) {
@@ -1533,10 +1772,12 @@ if (accountProfileForm) {
                 accountPhotoInput.value = '';
             }
 
-            updateAccountInitials(profileData.user.fullName);
             showMessage(accountProfileMessage, 'Account changes saved successfully!', 'success');
         } catch (error) {
-            showMessage(accountProfileMessage, error.message || 'Unable to save your account changes.', 'error');
+            const message = profileSaved
+                ? `Personal information was saved, but the profile photo could not be uploaded: ${error.message}`
+                : error.message || 'Unable to save your account changes.';
+            showMessage(accountProfileMessage, message, 'error');
         } finally {
             saveAccountProfileButton.disabled = false;
             saveAccountProfileButton.textContent = 'Save Changes';

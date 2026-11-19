@@ -98,6 +98,16 @@
                 <span>Device Management</span>
             </button>
 
+            <button type="button" class="nav-item" data-view="inventory">
+                <span class="nav-icon" aria-hidden="true">🧪</span>
+                <span>Vaccine Inventory</span>
+            </button>
+
+            <button type="button" class="nav-item" data-view="reports">
+                <span class="nav-icon" aria-hidden="true">📊</span>
+                <span>Reports & Exports</span>
+            </button>
+
         </nav>
 
         
@@ -295,7 +305,6 @@
                         playsinline
                         aria-label="Camera preview for scanning pet QR codes">
                     </video>
-
                     <canvas id="qrScannerCanvas" hidden></canvas>
                 </div>
 
@@ -387,41 +396,73 @@
                 </div>
             </section>
         </section>
+        <!-- QR SCANNER OWNER DETAILS -->
+        <dialog id="qrOwnerDetailsDialog" class="qr-owner-dialog" aria-labelledby="qrOwnerName">
+            <section class="qr-owner-card">
+                <button type="button" class="qr-owner-close" data-close-dialog="qrOwnerDetailsDialog" aria-label="Close owner details">×</button>
 
-        <!-- OWNER INFORMATION MODAL -->
-        <dialog id="qrOwnerDetailsDialog" class="smartvet-modal">
-            <div class="smartvet-modal-header">
-                <div>
-                    <p class="page-eyebrow">PET OWNER</p>
-                    <h2>Owner Information</h2>
-                </div>
+                <header class="qr-owner-header">
+                    <div class="qr-owner-avatar">
+                        <img id="qrOwnerPhoto" alt="Pet owner profile photo" hidden>
+                        <span id="qrOwnerPhotoPlaceholder" class="qr-owner-photo-placeholder" aria-hidden="true">SV</span>
+                    </div>
+                    <div class="qr-owner-identity">
+                        <p class="qr-owner-eyebrow">PET OWNER</p>
+                        <h2 id="qrOwnerName">Owner Name</h2>
+                        <p class="qr-owner-subtitle">Personal information</p>
+                    </div>
+                </header>
 
-                <button
-                    type="button"
-                    class="secondary"
-                    data-close-dialog="qrOwnerDetailsDialog"
-                    aria-label="Close owner information">
-                    Close
-                </button>
-            </div>
+                <section class="qr-owner-information" aria-label="Owner personal information">
+                    <div class="qr-owner-details">
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Email</span>
+                            <span class="qr-detail-value" id="qrOwnerEmail">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Phone</span>
+                            <span class="qr-detail-value" id="qrOwnerPhone">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Date of Birth</span>
+                            <span class="qr-detail-value" id="qrOwnerDateOfBirth">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Sex / Gender</span>
+                            <span class="qr-detail-value" id="qrOwnerGender">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Civil Status</span>
+                            <span class="qr-detail-value" id="qrOwnerCivilStatus">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Nationality</span>
+                            <span class="qr-detail-value" id="qrOwnerNationality">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Government ID</span>
+                            <span class="qr-detail-value" id="qrOwnerGovId">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Occupation</span>
+                            <span class="qr-detail-value" id="qrOwnerOccupation">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail qr-owner-detail-wide">
+                            <span class="qr-detail-label">Current Address</span>
+                            <span class="qr-detail-value" id="qrOwnerAddress">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail qr-owner-detail-wide">
+                            <span class="qr-detail-label">Permanent Address</span>
+                            <span class="qr-detail-value" id="qrOwnerPermanentAddress">Not provided</span>
+                        </div>
+                    </div>
+                </section>
 
-            <div class="qr-owner-profile">
-                <img id="qrOwnerPhoto" alt="Pet owner profile photo" hidden>
-
-                <div id="qrOwnerPhotoPlaceholder" class="qr-photo-placeholder">
-                    Owner photo not registered
-                </div>
-
-                <div>
-                    <h3 id="qrOwnerName">—</h3>
-                    <p id="qrOwnerEmail" class="muted">Email: —</p>
-                    <p id="qrOwnerPhone" class="muted">Phone: —</p>
-                </div>
-            </div>
-
-            <p class="muted">
-                Only owner information stored in SmartVet will be displayed here.
-            </p>
+                <footer class="qr-owner-footer">
+                    <button type="button" class="qr-owner-email-button" id="qrOwnerMailButton">Email owner</button>
+                    <button type="button" class="qr-owner-done-button" data-close-dialog="qrOwnerDetailsDialog">Done</button>
+                </footer>
+            </section>
         </dialog>
 
         <!-- ADD VACCINATION RECORD MODAL -->
@@ -444,6 +485,19 @@
 
             <form id="qrVaccinationForm">
                 <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="qrVaccinationInventorySelect">Use inventory lot (optional)</label>
+                        <select id="qrVaccinationInventorySelect">
+                            <option value="">Record without inventory tracking</option>
+                        </select>
+                        <p class="muted">Selecting a lot fills its vaccine details and deducts stock when saved.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="qrVaccinationInventoryQuantity">Doses used</label>
+                        <input id="qrVaccinationInventoryQuantity" type="number" min="1" step="1" value="1" disabled>
+                    </div>
+
                     <div class="form-group">
                         <label for="qrVaccineName">Vaccine Name *</label>
                         <input
@@ -635,6 +689,19 @@
                     </h2>
 
                     <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label for="vaccinationInventorySelect">Use inventory lot (optional)</label>
+                            <select id="vaccinationInventorySelect">
+                                <option value="">Record without inventory tracking</option>
+                            </select>
+                            <p class="muted">Selecting a lot fills its vaccine details and deducts the doses used when saved.</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vaccinationInventoryQuantity">Doses used</label>
+                            <input id="vaccinationInventoryQuantity" type="number" min="1" step="1" value="1" disabled>
+                        </div>
+
                         <div class="form-group">
                             <label for="vaccineName">Vaccine name *</label>
                             <input
@@ -744,6 +811,115 @@
                     <p class="muted">
                         Select an approved pet to view its history.
                     </p>
+                </div>
+            </section>
+        </section>
+
+        <!-- VACCINE INVENTORY -->
+        <section class="clinic-view" id="inventorySection" data-page="inventory" hidden>
+            <div class="page-heading">
+                <div>
+                    <p class="page-eyebrow">CLINICAL SUPPLIES</p>
+                    <h1>Vaccine Inventory</h1>
+                    <p class="muted">Track vaccine lots, expiry dates, stock levels, and usage during recorded vaccinations.</p>
+                </div>
+                <button type="button" class="secondary" id="refreshVaccineInventoryButton">Refresh inventory</button>
+            </div>
+
+            <section class="workspace-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Add vaccine lot</h2>
+                        <p class="muted">Each stock quantity is tracked as individual doses.</p>
+                    </div>
+                </div>
+                <form id="vaccineInventoryForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="inventoryVaccineName">Vaccine *</label>
+                            <input id="inventoryVaccineName" name="vaccineName" minlength="2" maxlength="150" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inventoryManufacturer">Manufacturer *</label>
+                            <input id="inventoryManufacturer" name="manufacturer" maxlength="150" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inventoryBatchNumber">Batch / lot number *</label>
+                            <input id="inventoryBatchNumber" name="batchNumber" maxlength="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inventoryExpiryDate">Expiry date *</label>
+                            <input id="inventoryExpiryDate" name="expiryDate" type="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inventoryStockQuantity">Initial doses *</label>
+                            <input id="inventoryStockQuantity" name="stockQuantity" type="number" min="0" max="1000000" step="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inventoryLowStockThreshold">Low-stock alert at</label>
+                            <input id="inventoryLowStockThreshold" name="lowStockThreshold" type="number" min="0" max="1000000" step="1" value="5">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="inventoryNotes">Notes</label>
+                            <textarea id="inventoryNotes" name="notes" rows="2" maxlength="500"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="primary" id="saveVaccineInventoryButton">Add lot</button>
+                    <p id="vaccineInventoryMessage" class="message" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+
+            <section class="workspace-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Stock by lot</h2>
+                        <p class="muted">Expired lots are clearly marked and cannot be selected for a vaccination.</p>
+                    </div>
+                </div>
+                <div id="vaccineInventoryList" class="inventory-list" aria-live="polite">
+                    <p class="muted">Open Vaccine Inventory to load lots.</p>
+                </div>
+            </section>
+        </section>
+
+        <!-- CLINIC REPORTS -->
+        <section class="clinic-view" id="reportsSection" data-page="reports" hidden>
+            <div class="page-heading">
+                <div>
+                    <p class="page-eyebrow">CLINIC INSIGHTS</p>
+                    <h1>Reports & Exports</h1>
+                    <p class="muted">Review and download registration, vaccination, follow-up, and inventory reports.</p>
+                </div>
+            </div>
+            <section class="workspace-panel">
+                <form id="clinicReportForm">
+                    <div class="form-grid report-filters">
+                        <div class="form-group">
+                            <label for="clinicReportType">Report</label>
+                            <select id="clinicReportType" required>
+                                <option value="vaccinations">Vaccinations administered</option>
+                                <option value="followups">Vaccination follow-ups</option>
+                                <option value="registrations">Pet registrations</option>
+                                <option value="inventory">Vaccine inventory</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="clinicReportFrom">From</label>
+                            <input id="clinicReportFrom" type="date">
+                        </div>
+                        <div class="form-group">
+                            <label for="clinicReportTo">To</label>
+                            <input id="clinicReportTo" type="date">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="primary" id="runClinicReportButton">Run report</button>
+                            <button type="button" class="secondary" id="exportClinicReportButton" disabled>Download CSV</button>
+                        </div>
+                    </div>
+                </form>
+                <p id="clinicReportMessage" class="message" role="status" aria-live="polite"></p>
+                <div id="clinicReportResults" class="report-table-wrap" aria-live="polite">
+                    <p class="muted">Choose a report and run it to view results.</p>
                 </div>
             </section>
         </section>

@@ -11,6 +11,12 @@ const vaccinationRecordSchema = new mongoose.Schema(
             index: true
         },
 
+        vaccineInventoryId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'VaccineInventory',
+            default: undefined
+        },
+
         // Name of the vaccine administered.
         vaccineName: {
             type: String,

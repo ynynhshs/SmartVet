@@ -23,6 +23,30 @@ const {
 
 const router = express.Router();
 
+// Shape a user document for the owner profile responses so the account page
+// always receives every personal detail captured during registration.
+function ownerProfilePayload(user) {
+    const doc = user && user.toObject ? user.toObject() : user;
+
+    return {
+        id: String(doc._id),
+        fullName: doc.fullName,
+        email: doc.email,
+        phone: doc.phone || '',
+        address: doc.address || '',
+        permanentAddress: doc.permanentAddress || '',
+        dateOfBirth: doc.dateOfBirth
+            ? new Date(doc.dateOfBirth).toISOString().slice(0, 10)
+            : '',
+        gender: doc.gender || '',
+        civilStatus: doc.civilStatus || '',
+        nationality: doc.nationality || '',
+        govId: doc.govId || '',
+        occupation: doc.occupation || '',
+        hasProfilePhoto: Boolean(doc.profilePhotoFilename && doc.profilePhotoContentType)
+    };
+}
+
 // Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -201,7 +225,7 @@ router.post('/profile/photo', handleProfilePhotoUpload, async (req, res, next) =
 router.get('/profile', async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id)
-            .select('fullName email phone address role profilePhotoFilename profilePhotoContentType')
+            .select('fullName email phone address permanentAddress dateOfBirth gender civilStatus nationality govId occupation role profilePhotoFilename profilePhotoContentType')
             .lean();
 
         if (!user || user.role !== 'owner') {
@@ -210,14 +234,7 @@ router.get('/profile', async (req, res, next) => {
 
         return res.status(200).json({
             success: true,
-            user: {
-                id: String(user._id),
-                fullName: user.fullName,
-                email: user.email,
-                phone: user.phone || '',
-                address: user.address || '',
-                hasProfilePhoto: Boolean(user.profilePhotoFilename && user.profilePhotoContentType)
-            }
+            user: ownerProfilePayload(user)
         });
     } catch (error) {
         return next(error);
@@ -225,49 +242,79 @@ router.get('/profile', async (req, res, next) => {
 });
 
 // PATCH /api/owner/profile
-router.patch('/profile', [
-    body('fullName').isString().trim().isLength({ min: 2, max: 120 }),
-    body('email').isString().trim().isEmail().isLength({ max: 254 }),
-    body('phone').optional({ checkFalsy: true }).isString().trim().isLength({ max: 30 }),
-    body('address').optional({ checkFalsy: true }).isString().trim().isLength({ max: 250 })
-], async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, message: errors.array()[0].msg });
-    }
-
-    try {
-        const user = await User.findById(req.user.id);
-        if (!user || user.role !== 'owner') {
-            return res.status(404).json({ success: false, message: 'Owner account not found.' });
+// Update only the authenticated owner's personal information.
+router.patch(
+    '/profile',
+    [
+        body('fullName').isString().trim().isLength({ min: 2, max: 120 })
+            .withMessage('Please enter your full name (2–120 characters).'),
+        body('email').isString().trim().isEmail().isLength({ max: 254 })
+            .withMessage('Please enter a valid email address.'),
+        body('phone').optional({ checkFalsy: true }).isString().trim().isLength({ max: 30 })
+            .withMessage('Phone number must be 30 characters or fewer.'),
+        body('address').optional({ checkFalsy: true }).isString().trim().isLength({ max: 250 })
+            .withMessage('Current address must be 250 characters or fewer.'),
+        body('permanentAddress').optional({ checkFalsy: true }).isString().trim().isLength({ max: 250 })
+            .withMessage('Permanent address must be 250 characters or fewer.'),
+        body('dateOfBirth').optional({ checkFalsy: true }).isISO8601({ strict: true, strictSeparator: true })
+            .withMessage('Please enter a valid date of birth.').toDate(),
+        body('gender').optional({ checkFalsy: true })
+            .isIn(['Male', 'Female', 'Prefer not to say'])
+            .withMessage('Please select a valid gender.'),
+        body('civilStatus').optional({ checkFalsy: true })
+            .isIn(['Single', 'Married', 'Widowed', 'Separated'])
+            .withMessage('Please select a valid civil status.'),
+        body('nationality').optional({ checkFalsy: true }).isString().trim().isLength({ max: 100 })
+            .withMessage('Nationality must be 100 characters or fewer.'),
+        body('govId').optional({ checkFalsy: true }).isString().trim().isLength({ max: 100 })
+            .withMessage('Government ID must be 100 characters or fewer.'),
+        body('occupation').optional({ checkFalsy: true })
+            .isIn(['Employed', 'Self-Employed', 'Student'])
+            .withMessage('Please select a valid occupation.')
+    ],
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, message: errors.array()[0].msg });
         }
 
-        user.fullName = req.body.fullName.trim();
-        user.email = req.body.email.trim().toLowerCase();
-        if (typeof req.body.phone === 'string') user.phone = req.body.phone.trim();
-        if (typeof req.body.address === 'string') user.address = req.body.address.trim();
-
-        await user.save();
-
-        return res.status(200).json({
-            success: true,
-            message: 'Personal information updated successfully.',
-            user: {
-                id: user._id.toString(),
-                fullName: user.fullName,
-                email: user.email,
-                phone: user.phone || '',
-                address: user.address || '',
-                hasProfilePhoto: Boolean(user.profilePhotoFilename && user.profilePhotoContentType)
+        try {
+            const user = await User.findById(req.user.id);
+            if (!user || user.role !== 'owner') {
+                return res.status(404).json({ success: false, message: 'Owner account not found.' });
             }
-        });
-    } catch (error) {
-        if (error && error.code === 11000) {
-            return res.status(409).json({ success: false, message: 'That email address is already in use.' });
+
+            user.fullName = req.body.fullName.trim();
+            user.email = req.body.email.trim().toLowerCase();
+
+            // Update new fields
+            if (req.body.phone !== undefined) user.phone = req.body.phone.trim();
+            if (req.body.address !== undefined) user.address = req.body.address.trim();
+            if (req.body.permanentAddress !== undefined) user.permanentAddress = req.body.permanentAddress.trim();
+            if (req.body.dateOfBirth !== undefined) {
+                user.dateOfBirth = req.body.dateOfBirth || null;
+            }
+            if (req.body.gender !== undefined) user.gender = req.body.gender;
+            if (req.body.civilStatus !== undefined) user.civilStatus = req.body.civilStatus;
+            if (req.body.nationality !== undefined) user.nationality = req.body.nationality.trim();
+            if (req.body.govId !== undefined) user.govId = req.body.govId.trim();
+            if (req.body.occupation !== undefined) user.occupation = req.body.occupation;
+
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Personal information updated successfully.',
+                user: ownerProfilePayload(user)
+            });
+        } catch (error) {
+            if (error && error.code === 11000) {
+                return res.status(409).json({ success: false, message: 'That email address is already in use.' });
+            }
+            return next(error);
         }
-        return next(error);
     }
-});
+);
 
 // GET /api/owner/pets/:petId/photo
 router.get('/pets/:petId/photo', async (req, res, next) => {
@@ -411,6 +458,61 @@ router.get('/pets', async (req, res, next) => {
                 ...(pet.registrationStatus === 'approved' && pet.petCode ? { petCode: pet.petCode } : {}),
                 createdAt: pet.createdAt
             }))
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+// GET /api/owner/vaccinations
+// Return vaccination records only for pets owned by the authenticated user.
+router.get('/vaccinations', async (req, res, next) => {
+    try {
+        const pets = await Pet.find({
+            ownerUserId: req.user.id,
+            registrationStatus: 'approved'
+        })
+            .select('_id name species petCode')
+            .lean();
+
+        const petById = new Map(
+            pets.map((pet) => [pet._id.toString(), pet])
+        );
+        const records = pets.length
+            ? await VaccinationRecord.find({
+                petId: { $in: pets.map((pet) => pet._id) }
+            })
+                .populate('administeredBy', 'fullName')
+                .sort({ nextDueDate: 1, administeredDate: -1 })
+                .lean()
+            : [];
+
+        return res.status(200).json({
+            success: true,
+            count: records.length,
+            vaccinations: records.map((record) => {
+                const pet = petById.get(record.petId.toString());
+
+                return {
+                    id: record._id.toString(),
+                    pet: pet
+                        ? {
+                            id: pet._id.toString(),
+                            name: pet.name,
+                            species: pet.species,
+                            petCode: pet.petCode || ''
+                        }
+                        : null,
+                    vaccineName: record.vaccineName,
+                    administeredDate: record.administeredDate,
+                    nextDueDate: record.nextDueDate || null,
+                    batchNumber: record.batchNumber || '',
+                    manufacturer: record.manufacturer || '',
+                    dosage: record.dosage || '',
+                    notes: record.notes || '',
+                    administeredBy: record.administeredBy?.fullName || 'Unknown'
+                };
+            })
         });
     } catch (error) {
         return next(error);

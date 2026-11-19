@@ -115,6 +115,15 @@
                 <button
                     type="button"
                     class="nav-item"
+                    data-view="vaccinations"
+                    aria-label="Vaccination Follow-up">
+                    <span class="nav-icon" aria-hidden="true">💉</span>
+                    <span>Vaccinations & Follow-up</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="nav-item"
                     data-view="notifications"
                     aria-label="Notifications">
                     <span class="nav-icon" aria-hidden="true">🔔</span>
@@ -366,7 +375,27 @@
                 </div>
             </section>
 
-            
+            <!-- VACCINATION FOLLOW-UP VIEW -->
+            <section class="owner-view" id="ownerVaccinationsSection" data-page="vaccinations" hidden>
+                <div class="page-heading">
+                    <div>
+                        <p class="page-eyebrow">PET HEALTH</p>
+                        <h1>Vaccinations & Follow-up</h1>
+                        <p class="muted">
+                            Review upcoming or overdue doses and print a certificate for a recorded vaccination.
+                        </p>
+                    </div>
+                    <button type="button" class="secondary-button" id="refreshOwnerVaccinationsButton">
+                        Refresh vaccinations
+                    </button>
+                </div>
+
+                <p id="ownerVaccinationsMessage" class="message" role="status" aria-live="polite"></p>
+                <div id="ownerVaccinationsList" class="owner-vaccination-list" aria-live="polite">
+                    <div class="empty-state">Open Vaccinations & Follow-up to load your pet's records.</div>
+                </div>
+            </section>
+
             <!-- FEEDING HISTORY VIEW -->
             <section class="owner-view" id="feedingSection" data-page="feeding" hidden>
                 <div class="page-heading">
@@ -589,6 +618,56 @@
                                 <label for="accountFullName">Full name</label>
                                 <input id="accountFullName" name="fullName" type="text" minlength="2" maxlength="120" autocomplete="name" required>
                             </div>
+
+                            <div class="account-grid-2">
+                                <div class="form-field">
+                                    <label for="accountDateOfBirth">Date of birth</label>
+                                    <input id="accountDateOfBirth" name="dateOfBirth" type="date">
+                                </div>
+                                <div class="form-field">
+                                    <label for="accountGender">Sex / Gender</label>
+                                    <select id="accountGender" name="gender">
+                                        <option value="">Select...</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Prefer not to say">Prefer not to say</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="account-grid-2">
+                                <div class="form-field">
+                                    <label for="accountCivilStatus">Civil / Marital Status</label>
+                                    <select id="accountCivilStatus" name="civilStatus">
+                                        <option value="">Select...</option>
+                                        <option value="Single">Single</option>
+                                        <option value="Married">Married</option>
+                                        <option value="Widowed">Widowed</option>
+                                        <option value="Separated">Separated</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label for="accountNationality">Nationality / Citizenship</label>
+                                    <input id="accountNationality" name="nationality" type="text" maxlength="100" placeholder="e.g. Filipino">
+                                </div>
+                            </div>
+
+                            <div class="account-grid-2">
+                                <div class="form-field">
+                                    <label for="accountGovId">Government / ID Number</label>
+                                    <input id="accountGovId" name="govId" type="text" maxlength="100" placeholder="PhilSys / TIN / Driver's License">
+                                </div>
+                                <div class="form-field">
+                                    <label for="accountOccupation">Occupation / Student Status</label>
+                                    <select id="accountOccupation" name="occupation">
+                                        <option value="">Select...</option>
+                                        <option value="Employed">Employed</option>
+                                        <option value="Self-Employed">Self-Employed</option>
+                                        <option value="Student">Student</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div class="form-field">
                                 <label for="accountEmail">Email address</label>
                                 <input id="accountEmail" name="email" type="email" maxlength="254" autocomplete="email" required>
@@ -598,8 +677,12 @@
                                 <input id="accountPhone" name="phone" type="tel" maxlength="30" autocomplete="tel">
                             </div>
                             <div class="form-field">
-                                <label for="accountAddress">Address</label>
-                                <textarea id="accountAddress" name="address" rows="2" maxlength="250" autocomplete="street-address" placeholder="Enter your home or contact address"></textarea>
+                                <label for="accountAddress">Current address</label>
+                                <textarea id="accountAddress" name="address" rows="2" maxlength="250" autocomplete="street-address" placeholder="House/Unit No., Street, Barangay, City/Municipality, Province"></textarea>
+                            </div>
+                            <div class="form-field">
+                                <label for="accountPermanentAddress">Permanent address</label>
+                                <textarea id="accountPermanentAddress" name="permanentAddress" rows="2" maxlength="250" placeholder="Same as current address / [Specify address]"></textarea>
                             </div>
                         </div>
 

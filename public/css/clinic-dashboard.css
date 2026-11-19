@@ -1939,14 +1939,47 @@ body[data-theme="dark"] .qr-details-grid dd {
 }
 
 /* ==========================================
-   QR PET DETAILS HIGHLIGHT
+   QR PET DETAILS HIGHLIGHT (Horizontal Grid)
    ========================================== */
+.qr-pet-profile {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    margin-top: 20px;
+    width: 100%;
+}
+
+/* 1. The Image Container */
+.qr-pet-photo-container {
+    flex-shrink: 0; /* Prevents the image from shrinking */
+    width: 220px;
+}
+
+.qr-pet-photo {
+    width: 220px !important;
+    height: 220px !important;
+    object-fit: cover !important;
+    border-radius: 20px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important;
+    border: 4px solid #ffffff !important;
+    display: block;
+}
+
+/* 2. The Details Container */
+.qr-pet-details {
+    flex: 1; /* Takes up the remaining space */
+    display: flex;
+    flex-direction: column;
+}
+
+/* 3. Name and ID Badge */
 .qr-pet-name-highlight {
-    font-size: 2.2rem !important;
+    font-size: 2.5rem !important;
     font-weight: 900 !important;
     color: var(--clay-heading) !important;
-    margin-bottom: 8px !important;
+    margin: 0 0 8px 0 !important;
     letter-spacing: -0.5px;
+    line-height: 1.1;
 }
 
 .qr-pet-id-badge {
@@ -1960,22 +1993,23 @@ body[data-theme="dark"] .qr-details-grid dd {
     font-size: 0.95rem;
     letter-spacing: 1px;
     margin-bottom: 24px;
+    width: fit-content;
 }
 
-/* Update the details grid to use cards */
+/* 4. The Horizontal Grid */
 .qr-details-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr) !important; /* Force 3 columns */
+    gap: 20px 30px !important;
     margin-top: 10px;
+    width: 100%;
 }
 
 .qr-detail-card {
-    background: var(--clay-surface-card);
-    padding: 12px 16px;
-    border-radius: 12px;
-    border: 1px solid rgba(203, 217, 232, 0.8);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
     display: flex;
     flex-direction: column;
 }
@@ -1983,14 +2017,14 @@ body[data-theme="dark"] .qr-details-grid dd {
 .qr-detail-card dt {
     font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     color: var(--clay-muted);
-    font-weight: 700;
+    font-weight: 800;
     margin-bottom: 4px;
 }
 
 .qr-detail-card dd {
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     font-weight: 800;
     color: var(--clay-heading);
     margin: 0;
@@ -2004,7 +2038,491 @@ body[data-theme="dark"] .qr-pet-id-badge {
     border-color: rgba(131, 195, 255, 0.4);
 }
 
-body[data-theme="dark"] .qr-detail-card {
+/* Mobile Responsive */
+@media (max-width: 760px) {
+    .qr-pet-profile {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .qr-details-grid {
+        grid-template-columns: repeat(2, 1fr) !important; /* 2 columns on mobile */
+        text-align: left;
+    }
+    .qr-pet-id-badge {
+        margin: 0 auto 24px auto;
+    }
+}
+
+
+/* QR scanner owner information dialog */
+.qr-owner-dialog {
+    width: min(760px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+    padding: 0;
+    overflow: auto;
+    border: 1px solid rgba(186, 211, 235, 0.8);
+    border-radius: 24px;
+    color: var(--clay-text);
+    background: var(--clay-surface);
+    box-shadow: 0 28px 80px rgba(13, 40, 70, 0.28);
+}
+
+.qr-owner-dialog::backdrop {
+    background: rgba(15, 35, 60, 0.58);
+    backdrop-filter: blur(4px);
+}
+
+.qr-owner-card {
+    position: relative;
+    padding: 30px;
+}
+
+.qr-owner-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid rgba(83, 116, 144, 0.18);
+    border-radius: 12px;
+    color: var(--clay-muted);
+    background: rgba(255, 255, 255, 0.72);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.qr-owner-close:hover,
+.qr-owner-close:focus-visible {
+    color: var(--clay-heading);
+    background: white;
+}
+
+.qr-owner-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-height: 112px;
+    padding: 0 52px 24px 0;
+    border-bottom: 1px solid rgba(83, 116, 144, 0.18);
+}
+
+.qr-owner-avatar {
+    display: grid;
+    width: 88px;
+    height: 88px;
+    flex: 0 0 88px;
+    place-items: center;
+    overflow: hidden;
+    border: 4px solid white;
+    border-radius: 24px;
+    color: white;
+    background: linear-gradient(145deg, #39b6c8, #2389e0);
+    box-shadow: 0 8px 20px rgba(35, 137, 224, 0.2);
+}
+
+.qr-owner-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.qr-owner-photo-placeholder {
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.qr-owner-identity {
+    min-width: 0;
+}
+
+.qr-owner-eyebrow,
+.qr-owner-subtitle {
+    margin: 0;
+    color: var(--clay-muted);
+}
+
+.qr-owner-eyebrow {
+    color: var(--clay-blue);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+}
+
+.qr-owner-identity h2 {
+    margin: 3px 0;
+    color: var(--clay-heading);
+    font-size: clamp(1.35rem, 3vw, 1.8rem);
+    font-weight: 800;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.qr-owner-subtitle {
+    font-size: 0.9rem;
+}
+
+.qr-owner-information {
+    padding: 22px 0;
+}
+
+.qr-owner-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.qr-owner-detail {
+    display: flex;
+    min-width: 0;
+    min-height: 68px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid rgba(186, 211, 235, 0.72);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.qr-owner-detail-wide {
+    grid-column: 1 / -1;
+}
+
+.qr-detail-label {
+    color: var(--clay-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.qr-detail-value {
+    color: var(--clay-heading);
+    font-size: 0.92rem;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
+.qr-owner-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(83, 116, 144, 0.18);
+}
+
+.qr-owner-footer button {
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.qr-owner-email-button {
+    color: white;
+    background: var(--clay-blue);
+    box-shadow: 0 5px 12px rgba(35, 137, 224, 0.2);
+}
+
+.qr-owner-email-button:hover,
+.qr-owner-email-button:focus-visible {
+    background: #1675c4;
+}
+
+.qr-owner-done-button {
+    color: var(--clay-heading);
+    background: white;
+    border-color: rgba(83, 116, 144, 0.2) !important;
+}
+
+.qr-owner-done-button:hover,
+.qr-owner-done-button:focus-visible {
     background: var(--clay-surface-card);
+}
+
+body[data-theme="dark"] .qr-owner-dialog {
+    border-color: rgba(131, 195, 255, 0.2);
+    color: #d7e8f8;
+    background: #152337;
+}
+
+body[data-theme="dark"] .qr-owner-close,
+body[data-theme="dark"] .qr-owner-detail,
+body[data-theme="dark"] .qr-owner-done-button {
+    border-color: rgba(131, 195, 255, 0.2);
+    color: #d7e8f8;
+    background: #1b2b40;
+}
+
+body[data-theme="dark"] .qr-owner-header,
+body[data-theme="dark"] .qr-owner-footer {
+    border-color: rgba(131, 195, 255, 0.2);
+}
+
+body[data-theme="dark"] .qr-owner-identity h2,
+body[data-theme="dark"] .qr-detail-value {
+    color: #eaf3fd;
+}
+
+body[data-theme="dark"] .qr-owner-subtitle,
+body[data-theme="dark"] .qr-detail-label {
+    color: #9db8d4;
+}
+
+body[data-theme="dark"] .qr-owner-eyebrow {
+    color: #83c3ff;
+}
+
+@media (max-width: 560px) {
+    .qr-owner-card {
+        padding: 22px 18px;
+    }
+
+    .qr-owner-header {
+        gap: 14px;
+        padding-right: 38px;
+    }
+
+    .qr-owner-avatar {
+        width: 68px;
+        height: 68px;
+        flex-basis: 68px;
+        border-radius: 19px;
+    }
+
+    .qr-owner-details {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .qr-owner-detail-wide {
+        grid-column: auto;
+    }
+
+    .qr-owner-footer button {
+        flex: 1;
+        padding: 0 10px;
+    }
+}
+
+/* ==========================================
+   REGISTRATION FORM UPDATES
+   ========================================== */
+
+/* Make the form side scrollable since it's much longer now */
+.login-form-side {
+    max-height: 90vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+/* Profile Photo Upload */
+.profile-photo-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.avatar-preview-circle {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 3px solid #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.avatar-preview-circle:hover {
+    transform: scale(1.05);
+}
+
+.avatar-preview-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#registerAvatarInitials {
+    font-size: 2rem;
+    color: #94a3b8;
+}
+
+.photo-upload-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--clay-blue, #2389e0);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* Section Titles */
+.form-section-title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 20px 0 10px 0;
+    padding-bottom: 5px;
+    border-bottom: 2px solid rgba(35, 137, 224, 0.2);
+}
+
+/* 2-Column Grid for smaller fields */
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* Adjust form fields slightly for the new layout */
+#registerForm .form-field {
+    margin-bottom: 12px;
+}
+
+.inventory-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 16px;
+}
+
+.inventory-card {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid rgba(83, 116, 144, 0.18);
+    border-radius: 16px;
+    background: var(--clay-surface);
+    box-shadow: var(--clay-shadow-sm);
+}
+
+.inventory-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.inventory-card-heading h3 {
+    margin: 0;
+    color: var(--clay-heading);
+    overflow-wrap: anywhere;
+}
+
+.inventory-status {
+    flex: 0 0 auto;
+    padding: 4px 9px;
+    border-radius: 999px;
+    color: #07543f;
+    background: #d9f5e9;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.inventory-status.low-stock {
+    color: #805100;
+    background: #fff1c2;
+}
+
+.inventory-status.expired,
+.inventory-status.out-of-stock {
+    color: #a32135;
+    background: #ffe4e8;
+}
+
+.inventory-adjust-form {
+    display: grid;
+    grid-template-columns: minmax(90px, 0.7fr) minmax(120px, 1fr) auto;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.inventory-adjust-form input {
+    min-width: 0;
+}
+
+.inventory-card details {
+    margin-top: 12px;
+}
+
+.inventory-card details p {
+    margin: 8px 0;
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.report-filters {
+    align-items: end;
+}
+
+.report-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    margin-top: 16px;
+}
+
+.clinic-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.clinic-report-table th,
+.clinic-report-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(83, 116, 144, 0.16);
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.clinic-report-table th {
+    color: var(--clay-heading);
+    background: var(--clay-surface-card);
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+}
+
+body[data-theme="dark"] .inventory-card {
     border-color: #2b3d53;
+    background: #152337;
+}
+
+body[data-theme="dark"] .inventory-card-heading h3,
+body[data-theme="dark"] .clinic-report-table th {
+    color: #eaf3fd;
+}
+
+body[data-theme="dark"] .clinic-report-table th {
+    background: #1b2b40;
+}
+
+body[data-theme="dark"] .clinic-report-table th,
+body[data-theme="dark"] .clinic-report-table td {
+    border-color: rgba(131, 195, 255, 0.2);
+}
+
+@media (max-width: 560px) {
+    .inventory-adjust-form {
+        grid-template-columns: 1fr;
+    }
+
+    .report-filters .form-actions {
+        flex-wrap: wrap;
+    }
 }

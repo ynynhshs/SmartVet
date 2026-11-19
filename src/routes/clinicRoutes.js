@@ -8,6 +8,8 @@ const path = require('path');
 const Pet = require('../models/Pet');
 const VaccinationRecord = require('../models/VaccinationRecord');
 const AuditLog = require('../models/AuditLog');
+const User = require('../models/User');
+const VaccineInventory = require('../models/VaccineInventory');
 
 const {
     requireAuth,
@@ -73,6 +75,68 @@ router.get('/pets/:petId/photo', async (req, res, next) => {
                     return res.status(404).json({
                         success: false,
                         message: 'Pet photo file is missing from the server.'
+                    });
+                }
+            }
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+// Serve an owner's profile photo to authenticated veterinary staff.
+// Used by the QR scanner's owner details modal.
+router.get('/owners/:ownerId/photo', async (req, res, next) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.ownerId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid owner ID.'
+            });
+        }
+
+        const owner = await User.findById(req.params.ownerId)
+            .select('role profilePhotoFilename profilePhotoContentType')
+            .lean();
+
+        if (!owner || owner.role !== 'owner') {
+            return res.status(404).json({
+                success: false,
+                message: 'Owner account not found.'
+            });
+        }
+
+        if (!owner.profilePhotoFilename || !owner.profilePhotoContentType) {
+            return res.status(404).json({
+                success: false,
+                message: 'No profile photo is available.'
+            });
+        }
+
+        if (owner.profilePhotoFilename.startsWith('http')) {
+            return res.redirect(owner.profilePhotoFilename);
+        }
+
+        const photoDirectory = path.join(
+            __dirname,
+            '../../uploads/profile-photos'
+        );
+
+        const photoPath = path.join(
+            photoDirectory,
+            path.basename(owner.profilePhotoFilename)
+        );
+
+        res.set('Content-Type', owner.profilePhotoContentType);
+        res.set('Cache-Control', 'private, no-store');
+        res.set('X-Content-Type-Options', 'nosniff');
+
+        return res.sendFile(photoPath, (error) => {
+            if (error) {
+                if (!res.headersSent) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Profile photo file is missing from the server.'
                     });
                 }
             }
@@ -282,6 +346,163 @@ router.get('/dashboard-overview', async (req, res, next) => {
             },
             vaccinationAttention,
             recentActivity
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+// GET /api/clinic/reports
+// Return bounded, date-filtered rows for veterinary staff to review or export.
+router.get('/reports', async (req, res, next) => {
+    const reportType = req.query.type;
+    const allowedTypes = ['registrations', 'vaccinations', 'followups', 'inventory'];
+
+    if (typeof reportType !== 'string' || !allowedTypes.includes(reportType)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Choose a valid report type.'
+        });
+    }
+
+    function parseDate(value, label) {
+        if (value === undefined) return null;
+        if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            throw new Error(`${label} must use YYYY-MM-DD format.`);
+        }
+        const date = new Date(`${value}T00:00:00.000Z`);
+        if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+            throw new Error(`${label} must be a valid calendar date.`);
+        }
+        return date;
+    }
+
+    let from;
+    let to;
+    try {
+        from = parseDate(req.query.from, 'Start date');
+        to = parseDate(req.query.to, 'End date');
+    } catch (error) {
+        return res.status(400).json({ success: false, message: error.message });
+    }
+
+    if (from && to && from > to) {
+        return res.status(400).json({
+            success: false,
+            message: 'Start date must be on or before the end date.'
+        });
+    }
+
+    function dateFilter(field) {
+        const filter = {};
+        if (from || to) {
+            filter[field] = {};
+            if (from) filter[field].$gte = from;
+            if (to) {
+                filter[field].$lt = new Date(
+                    to.getTime() + 24 * 60 * 60 * 1000
+                );
+            }
+        }
+        return filter;
+    }
+
+    try {
+        let columns;
+        let rows;
+
+        if (reportType === 'registrations') {
+            columns = [
+                'Pet ID', 'Pet name', 'Species', 'Breed', 'Owner',
+                'Owner email', 'Status', 'Submitted'
+            ];
+            const pets = await Pet.find(dateFilter('createdAt'))
+                .populate('ownerUserId', 'fullName email')
+                .sort({ createdAt: -1 })
+                .limit(5001)
+                .lean();
+            rows = pets.map((pet) => [
+                pet.petCode || '',
+                pet.name,
+                pet.species,
+                pet.breed || '',
+                pet.ownerUserId?.fullName || '',
+                pet.ownerUserId?.email || '',
+                pet.registrationStatus,
+                pet.createdAt
+            ]);
+        } else if (reportType === 'vaccinations' || reportType === 'followups') {
+            const dateField = reportType === 'followups'
+                ? 'nextDueDate'
+                : 'administeredDate';
+            columns = [
+                'Pet ID', 'Pet name', 'Species', 'Vaccine',
+                reportType === 'followups' ? 'Due date' : 'Date administered',
+                'Manufacturer', 'Batch / lot', 'Dosage', 'Veterinary staff'
+            ];
+            const records = await VaccinationRecord.find(
+                dateFilter(dateField)
+            )
+                .populate('petId', 'petCode name species')
+                .populate('administeredBy', 'fullName')
+                .sort({ [dateField]: reportType === 'followups' ? 1 : -1 })
+                .limit(5001)
+                .lean();
+            rows = records.map((record) => [
+                record.petId?.petCode || '',
+                record.petId?.name || '',
+                record.petId?.species || '',
+                record.vaccineName,
+                reportType === 'followups'
+                    ? record.nextDueDate
+                    : record.administeredDate,
+                record.manufacturer || '',
+                record.batchNumber || '',
+                record.dosage || '',
+                record.administeredBy?.fullName || ''
+            ]);
+        } else {
+            columns = [
+                'Vaccine', 'Manufacturer', 'Batch / lot', 'Expiry date',
+                'Doses in stock', 'Low-stock threshold', 'Stock status'
+            ];
+            const inventory = await VaccineInventory.find({})
+                .sort({ expiryDate: 1, vaccineName: 1 })
+                .limit(5001)
+                .lean();
+            rows = inventory.map((item) => {
+                const today = new Date();
+                today.setUTCHours(0, 0, 0, 0);
+                const status = item.expiryDate < today
+                    ? 'Expired'
+                    : item.stockQuantity === 0
+                        ? 'Out of stock'
+                        : item.stockQuantity <= item.lowStockThreshold
+                            ? 'Low stock'
+                            : 'In stock';
+                return [
+                    item.vaccineName,
+                    item.manufacturer,
+                    item.batchNumber,
+                    item.expiryDate,
+                    item.stockQuantity,
+                    item.lowStockThreshold,
+                    status
+                ];
+            });
+        }
+
+        const truncated = rows.length > 5000;
+        if (truncated) rows = rows.slice(0, 5000);
+
+        return res.status(200).json({
+            success: true,
+            type: reportType,
+            columns,
+            count: rows.length,
+            rows,
+            truncated,
+            generatedAt: new Date().toISOString()
         });
     } catch (error) {
         return next(error);
@@ -588,7 +809,10 @@ router.get('/pets/qr/:identifier', async (req, res, next) => {
             .select(
                 'petCode name species breed sex dateOfBirth color registrationStatus verifiedAt ownerUserId photoFilename photoContentType'
             )
-            .populate('ownerUserId', 'fullName email phone')
+            .populate(
+                'ownerUserId',
+                'fullName email phone dateOfBirth gender civilStatus nationality govId occupation address permanentAddress profilePhotoFilename profilePhotoContentType'
+            )
             .lean();
 
         if (!pet) {
@@ -628,7 +852,23 @@ router.get('/pets/qr/:identifier', async (req, res, next) => {
                         id: pet.ownerUserId._id.toString(),
                         fullName: pet.ownerUserId.fullName,
                         email: pet.ownerUserId.email,
-                        phone: pet.ownerUserId.phone || ''
+                        phone: pet.ownerUserId.phone || '',
+                        dateOfBirth: pet.ownerUserId.dateOfBirth
+                            ? new Date(pet.ownerUserId.dateOfBirth).toISOString().slice(0, 10)
+                            : '',
+                        gender: pet.ownerUserId.gender || '',
+                        civilStatus: pet.ownerUserId.civilStatus || '',
+                        nationality: pet.ownerUserId.nationality || '',
+                        govId: pet.ownerUserId.govId || '',
+                        occupation: pet.ownerUserId.occupation || '',
+                        address: pet.ownerUserId.address || '',
+                        permanentAddress: pet.ownerUserId.permanentAddress || '',
+                        hasProfilePhoto: Boolean(
+                            pet.ownerUserId.profilePhotoFilename && pet.ownerUserId.profilePhotoContentType
+                        ),
+                        photoEndpoint: pet.ownerUserId.profilePhotoFilename && pet.ownerUserId.profilePhotoContentType
+                            ? `/api/clinic/owners/${pet.ownerUserId._id.toString()}/photo`
+                            : null
                     }
                     : null
             }
@@ -713,7 +953,17 @@ router.post(
             .bail()
             .trim()
             .isLength({ max: 2000 })
-            .withMessage('Notes cannot exceed 2000 characters.')
+            .withMessage('Notes cannot exceed 2000 characters.'),
+
+        body('inventoryItemId')
+            .optional({ values: 'falsy' })
+            .isMongoId()
+            .withMessage('Choose a valid vaccine inventory lot.'),
+
+        body('inventoryQuantityUsed')
+            .optional({ values: 'falsy' })
+            .isInt({ min: 1, max: 1000 })
+            .withMessage('Doses used must be a whole number from 1 to 1,000.')
     ],
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -751,6 +1001,50 @@ router.post(
                 });
             }
 
+            let inventoryItem = null;
+            const inventoryQuantityUsed =
+                req.body.inventoryQuantityUsed === undefined
+                    ? 1
+                    : Number(req.body.inventoryQuantityUsed);
+            if (req.body.inventoryItemId) {
+                if (
+                    !Number.isInteger(inventoryQuantityUsed) ||
+                    inventoryQuantityUsed < 1 ||
+                    inventoryQuantityUsed > 1000
+                ) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Doses used must be a whole number from 1 to 1,000.'
+                    });
+                }
+
+                if (!mongoose.isValidObjectId(req.body.inventoryItemId)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Choose a valid vaccine inventory lot.'
+                    });
+                }
+
+                inventoryItem = await VaccineInventory.findById(
+                    req.body.inventoryItemId
+                ).lean();
+                if (!inventoryItem) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Vaccine inventory lot not found.'
+                    });
+                }
+                if (
+                    inventoryItem.vaccineName.trim().toLowerCase() !==
+                    req.body.vaccineName.trim().toLowerCase()
+                ) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'The selected inventory lot does not match the vaccine name.'
+                    });
+                }
+            }
+
             const vaccinationData = {
                 petId: pet._id,
                 vaccineName: req.body.vaccineName.trim(),
@@ -758,11 +1052,18 @@ router.post(
                     `${req.body.administeredDate}T00:00:00.000Z`
                 ),
                 administeredBy: req.user.id,
-                batchNumber: req.body.batchNumber?.trim() || '',
-                manufacturer: req.body.manufacturer?.trim() || '',
+                batchNumber: inventoryItem
+                    ? inventoryItem.batchNumber
+                    : req.body.batchNumber?.trim() || '',
+                manufacturer: inventoryItem
+                    ? inventoryItem.manufacturer
+                    : req.body.manufacturer?.trim() || '',
                 dosage: req.body.dosage?.trim() || '',
                 notes: req.body.notes?.trim() || ''
             };
+            if (inventoryItem) {
+                vaccinationData.vaccineInventoryId = inventoryItem._id;
+            }
 
             if (req.body.nextDueDate) {
                 vaccinationData.nextDueDate = new Date(
@@ -770,7 +1071,73 @@ router.post(
                 );
             }
 
-            const record = await VaccinationRecord.create(vaccinationData);
+            const recordId = new mongoose.Types.ObjectId();
+            if (inventoryItem) {
+                const today = new Date();
+                today.setUTCHours(0, 0, 0, 0);
+                const updatedInventory = await VaccineInventory.findOneAndUpdate(
+                    {
+                        _id: inventoryItem._id,
+                        stockQuantity: { $gte: inventoryQuantityUsed },
+                        expiryDate: { $gte: today }
+                    },
+                    {
+                        $inc: { stockQuantity: -inventoryQuantityUsed },
+                        $set: { updatedBy: req.user.id },
+                        $push: {
+                            movements: {
+                                $each: [{
+                                    type: 'administered',
+                                    quantityChange: -inventoryQuantityUsed,
+                                    reason: `Used for ${pet.name} (${vaccinationData.vaccineName})`,
+                                    actorUserId: req.user.id,
+                                    vaccinationRecordId: recordId
+                                }],
+                                $slice: -100
+                            }
+                        }
+                    },
+                    { new: true, runValidators: true }
+                );
+
+                if (!updatedInventory) {
+                    return res.status(409).json({
+                        success: false,
+                        message: 'The selected vaccine lot is expired or has insufficient stock. Refresh inventory and try again.'
+                    });
+                }
+            }
+
+            let record;
+            try {
+                record = await VaccinationRecord.create({
+                    _id: recordId,
+                    ...vaccinationData
+                });
+            } catch (error) {
+                if (inventoryItem) {
+                    await VaccineInventory.findByIdAndUpdate(
+                        inventoryItem._id,
+                        {
+                            $inc: { stockQuantity: inventoryQuantityUsed },
+                            $set: { updatedBy: req.user.id },
+                            $push: {
+                                movements: {
+                                    $each: [{
+                                        type: 'reversal',
+                                        quantityChange: inventoryQuantityUsed,
+                                        reason: `Reversed failed vaccination record for ${pet.name}`,
+                                        actorUserId: req.user.id,
+                                        vaccinationRecordId: recordId
+                                    }],
+                                    $slice: -100
+                                }
+                            }
+                        }
+                    );
+                }
+                throw error;
+            }
 
             return res.status(201).json({
                 success: true,

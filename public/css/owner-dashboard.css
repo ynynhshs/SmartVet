@@ -2006,6 +2006,7 @@ body[data-theme="dark"] .pet-id-value {
 }
 
 .card__form-fields .form-field input,
+.card__form-fields .form-field select,
 .card__form-fields .form-field textarea {
   width: 100%;
   padding: 10px 12px;
@@ -2019,11 +2020,45 @@ body[data-theme="dark"] .pet-id-value {
 }
 
 .card__form-fields .form-field input:focus,
+.card__form-fields .form-field select:focus,
 .card__form-fields .form-field textarea:focus {
   outline: none;
   border-color: var(--main-color);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(35, 137, 224, 0.15);
+}
+
+/* Two-column rows inside the account card */
+.card__form-fields .account-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card__form-fields .account-grid-2 .form-field {
+  margin-bottom: 0;
+}
+
+/* Select: match the card inputs and show a custom chevron */
+.card__form-fields .form-field select {
+  padding-right: 38px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23537490' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 13px;
+  cursor: pointer;
+}
+
+.card__form-fields .form-field select option[value=""] {
+  color: #8aa3be;
+}
+
+.card__form-fields .form-field input[type="date"] {
+  min-height: 40px;
+  color-scheme: light;
 }
 
 /* Buttons */
@@ -2530,4 +2565,106 @@ body[data-theme="dark"] .owner-vaccination-entry p strong {
 body[data-theme="dark"] .vaccine-date-highlight {
     background-color: #d97706; /* Darker amber for contrast */
     color: #ffffff;
+}
+
+.owner-vaccination-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 16px;
+}
+
+.owner-follow-up-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px;
+    border: 1px solid rgba(83, 116, 144, 0.18);
+    border-radius: 18px;
+    background: var(--clay-surface);
+    box-shadow: var(--clay-shadow-sm);
+}
+
+.owner-follow-up-card h2 {
+    margin: 0;
+    color: var(--clay-heading);
+    font-size: 1.1rem;
+    overflow-wrap: anywhere;
+}
+
+.owner-follow-up-card p {
+    margin: 0;
+}
+
+.owner-follow-up-dates {
+    display: grid;
+    width: 100%;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--clay-surface-card);
+}
+
+.owner-follow-up-status {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.owner-follow-up-status.overdue {
+    color: #a32135;
+    background: #ffe4e8;
+}
+
+.owner-follow-up-status.due-soon {
+    color: #805100;
+    background: #fff1c2;
+}
+
+.owner-follow-up-status.upcoming {
+    color: #07543f;
+    background: #d9f5e9;
+}
+
+.owner-follow-up-status.no-follow-up {
+    color: var(--clay-muted);
+    background: rgba(83, 116, 144, 0.12);
+}
+
+body[data-theme="dark"] .owner-follow-up-card {
+    border-color: #2b3d53;
+    background: #152337;
+}
+
+body[data-theme="dark"] .owner-follow-up-card h2 {
+    color: #eaf3fd;
+}
+
+body[data-theme="dark"] .owner-follow-up-dates {
+    background: #1b2b40;
+}
+
+body[data-theme="dark"] .owner-follow-up-status.overdue {
+    color: #ffc2cb;
+    background: #632838;
+}
+
+body[data-theme="dark"] .owner-follow-up-status.due-soon {
+    color: #ffdf91;
+    background: #584116;
+}
+
+body[data-theme="dark"] .owner-follow-up-status.upcoming {
+    color: #8fe1bf;
+    background: #164b3c;
+}
+
+/* Account card: single column on narrow screens. Kept at the end of the
+   stylesheet so it overrides the base two-column rule above. */
+@media (max-width: 560px) {
+    .card__form-fields .account-grid-2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
