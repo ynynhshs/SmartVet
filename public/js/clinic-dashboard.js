@@ -173,19 +173,15 @@ const views = {
     reports: document.getElementById('reportsSection')
 };
 
-const tokenKey = 'smartvetAccessToken';
-const userKey = 'smartvetUser';
-
 let dashboardReady = false;
 let approvedPets = [];
 
 function getToken() {
-    return sessionStorage.getItem(tokenKey);
+    return SmartVetSession.getToken();
 }
 
 function logout() {
-    sessionStorage.removeItem(tokenKey);
-    sessionStorage.removeItem(userKey);
+    SmartVetSession.clear();
     window.location.replace('/login.html');
 }
 

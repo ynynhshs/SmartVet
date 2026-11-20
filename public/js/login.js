@@ -14,17 +14,8 @@ const showLoginButton = document.getElementById('showLoginButton');
 
 const formSide = document.querySelector('.login-form-side');
 
-const SESSION_TOKEN_KEY = 'smartvetAccessToken';
-const SESSION_USER_KEY = 'smartvetUser';
-
-function clearStoredSession() {
-    sessionStorage.removeItem(SESSION_TOKEN_KEY);
-    sessionStorage.removeItem(SESSION_USER_KEY);
-}
-
-// A visit to the login page always starts from a clean slate, so an owner is
-// never silently restored into the dashboard on a later visit.
-clearStoredSession();
+// Sessions are persisted by SmartVetSession. Visiting the login page must not
+// clear an existing session, otherwise a refresh would sign the user out.
 
 // Registration Profile Photo Elements
 const registerFullName = document.getElementById('registerFullName');
@@ -150,7 +141,7 @@ async function requestJson(url, options) {
 function redirectByRole(user) {
     const ownerAppMode = new URLSearchParams(window.location.search).get('app') === 'owner';
     if (ownerAppMode && user?.role !== 'owner') {
-        clearStoredSession();
+        SmartVetSession.clear();
         throw new Error('The SmartVet mobile app is for pet-owner accounts only.');
     }
 
@@ -163,7 +154,7 @@ function redirectByRole(user) {
     const destination = destinations[user?.role];
 
     if (!destination) {
-        clearStoredSession();
+        SmartVetSession.clear();
         throw new Error('This account has an unrecognized role.');
     }
 
@@ -175,9 +166,8 @@ function saveAuthenticatedSession(data) {
         throw new Error('The server returned an invalid authentication response.');
     }
 
-    // Hand the token to the next page once. The dashboard keeps it in memory
-    // only, so it is never reused on a later visit.
-    sessionStorage.setItem(SESSION_TOKEN_KEY, data.accessToken);
+    // Persist the session so a refresh or a new tab stays signed in.
+    SmartVetSession.save(data.accessToken, data.user);
 
     redirectByRole(data.user);
 }

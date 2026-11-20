@@ -1,14 +1,11 @@
-// The owner session is intentionally NOT persisted. The login page hands the
-// access token over once and it lives in memory for this page only, so every
-// new visit or reload asks the owner to sign in again.
-const token = sessionStorage.getItem('smartvetAccessToken');
+// The owner session is persisted so refreshing this page (or reopening it in
+// a new tab) keeps the owner signed in. Only an explicit logout or an expired
+// token clears it.
+const token = SmartVetSession.getToken();
 
 function clearStoredSession() {
-    sessionStorage.removeItem('smartvetAccessToken');
-    sessionStorage.removeItem('smartvetUser');
+    SmartVetSession.clear();
 }
-
-clearStoredSession();
 
 const welcomeHeading = document.getElementById('welcomeHeading');
 const dashboardMessage = document.getElementById('dashboardMessage');
