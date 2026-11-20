@@ -569,6 +569,12 @@ button:disabled {
 }
 
 /* Notifications */
+.notifications-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
 .notification-list {
     display: grid;
     gap: 14px;

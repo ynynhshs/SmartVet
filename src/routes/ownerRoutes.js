@@ -12,6 +12,7 @@ const User = require('../models/User');
 const Pet = require('../models/Pet');
 const VaccinationRecord = require('../models/VaccinationRecord');
 const Notification = require('../models/Notification');
+const PushSubscription = require('../models/PushSubscription');
 const FeedingEvent = require('../models/FeedingEvent');
 const ActivityRecord = require('../models/ActivityRecord');
 
@@ -19,6 +20,11 @@ const {
     requireAuth,
     authorizeRoles
 } = require('../middleware/authMiddleware');
+
+const {
+    isPushConfigured,
+    VAPID_PUBLIC_KEY
+} = require('../services/pushService');
 
 const router = express.Router();
 
@@ -728,6 +734,111 @@ router.get('/activity-records', async (req, res, next) => {
                 sensorSummary: record.sensorSummary ?? null,
                 createdAt: record.createdAt
             }))
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+// GET /api/owner/push-subscription
+// Tells the owner dashboard whether push is configured and if this account
+// already has a browser subscribed.
+router.get('/push-subscription', async (req, res, next) => {
+    try {
+        const subscriptionCount = await PushSubscription.countDocuments({
+            userId: req.user.id
+        });
+
+        return res.status(200).json({
+            success: true,
+            supported: isPushConfigured(),
+            vapidPublicKey: VAPID_PUBLIC_KEY,
+            isSubscribed: subscriptionCount > 0,
+            subscriptionCount
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+// POST /api/owner/push-subscription
+// Stores (or refreshes) a browser push subscription for the signed-in owner.
+router.post(
+    '/push-subscription',
+    async (req, res, next) => {
+        const endpoint = req.body && req.body.endpoint;
+        const keys = req.body && req.body.keys;
+        const expirationTime = req.body && req.body.expirationTime;
+
+        const isValidEndpoint = typeof endpoint === 'string'
+            && endpoint.trim().length > 0
+            && endpoint.length <= 500
+            && /^https?:\/\//i.test(endpoint.trim());
+
+        const isValidKeys = keys
+            && typeof keys.p256dh === 'string'
+            && keys.p256dh.trim().length > 0
+            && typeof keys.auth === 'string'
+            && keys.auth.trim().length > 0;
+
+        if (!isValidEndpoint) {
+            return res.status(400).json({
+                success: false,
+                message: 'A valid push endpoint (http/https) is required.'
+            });
+        }
+
+        if (!isValidKeys) {
+            return res.status(400).json({
+                success: false,
+                message: 'Push encryption keys are missing.'
+            });
+        }
+
+        try {
+
+            await PushSubscription.findOneAndUpdate(
+                { endpoint },
+                {
+                    userId: req.user.id,
+                    endpoint,
+                    keys: {
+                        p256dh: keys.p256dh,
+                        auth: keys.auth
+                    },
+                    expirationTime: expirationTime ? new Date(expirationTime) : null
+                },
+                { new: true, upsert: true, setDefaultsOnInsert: true }
+            );
+
+            return res.status(201).json({
+                success: true,
+                message: 'Browser notifications enabled.'
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+);
+
+// DELETE /api/owner/push-subscription
+// Removes one subscription (when an endpoint is supplied) or all of them.
+router.delete('/push-subscription', async (req, res, next) => {
+    try {
+        const endpoint = req.body && req.body.endpoint;
+
+        if (endpoint) {
+            await PushSubscription.deleteOne({
+                userId: req.user.id,
+                endpoint
+            });
+        } else {
+            await PushSubscription.deleteMany({ userId: req.user.id });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Browser notifications disabled.'
         });
     } catch (error) {
         return next(error);

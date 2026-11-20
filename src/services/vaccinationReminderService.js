@@ -3,6 +3,7 @@ const Pet = require('../models/Pet');
 const User = require('../models/User');
 const VaccinationRecord = require('../models/VaccinationRecord');
 const Notification = require('../models/Notification');
+const { sendPushToUser } = require('./pushService');
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const REMINDER_WINDOW_DAYS = 7;
@@ -52,6 +53,7 @@ async function generateVaccinationReminders() {
     let created = 0;
     let duplicates = 0;
     let skipped = 0;
+    let pushed = 0;
 
     for (const record of records) {
         const pet = record.petId;
@@ -126,6 +128,24 @@ async function generateVaccinationReminders() {
             });
 
             created += 1;
+
+            // Also deliver a browser push notification. A push failure must
+            // never block the in-app notification that was just saved.
+            try {
+                const pushResult = await sendPushToUser(ownerUserId, {
+                    title,
+                    message
+                });
+
+                if (pushResult.sent > 0) {
+                    pushed += 1;
+                }
+            } catch (pushError) {
+                console.error(
+                    '[Vaccination reminders] push delivery failed:',
+                    pushError.message
+                );
+            }
         } catch (error) {
             if (error.code === 11000) {
                 duplicates += 1;
@@ -141,7 +161,8 @@ async function generateVaccinationReminders() {
         eligible,
         created,
         duplicates,
-        skipped
+        skipped,
+        pushed
     };
 }
 

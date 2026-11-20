@@ -19,6 +19,8 @@ const petList = document.getElementById('petList');
 
 // Notifications
 const refreshNotificationsButton = document.getElementById('refreshNotificationsButton');
+const enableNotificationsButton = document.getElementById('enableNotificationsButton');
+const pushStatus = document.getElementById('pushStatus');
 const notificationsSummary = document.getElementById('notificationsSummary');
 const ownerNotificationList = document.getElementById('ownerNotificationList');
 const ownerVaccinationsList = document.getElementById('ownerVaccinationsList');
@@ -1190,6 +1192,134 @@ async function markNotificationAsRead(notificationId, button) {
     }
 }
 
+// --- Browser push notifications (Web Push) ---
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const output = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; i += 1) {
+        output[i] = rawData.charCodeAt(i);
+    }
+
+    return output;
+}
+
+function setPushStatus(message, type = '') {
+    if (pushStatus) {
+        showMessage(pushStatus, message, type);
+    }
+}
+
+function updatePushButton({ supported, isSubscribed, permission }) {
+    if (!enableNotificationsButton) return;
+
+    if (!supported) {
+        enableNotificationsButton.disabled = true;
+        enableNotificationsButton.textContent = 'Notifications Not Supported';
+        setPushStatus('Browser notifications are not configured on the server.', 'error');
+        return;
+    }
+
+    if (permission === 'denied') {
+        enableNotificationsButton.disabled = true;
+        enableNotificationsButton.textContent = 'Notifications Blocked';
+        setPushStatus('Notifications are blocked for this site. Allow them in your browser settings, then reload.', 'error');
+        return;
+    }
+
+    if (isSubscribed) {
+        enableNotificationsButton.disabled = true;
+        enableNotificationsButton.textContent = 'Notifications Enabled';
+        setPushStatus('Browser notifications are on. You will receive reminders even when this tab is closed.', 'success');
+        return;
+    }
+
+    enableNotificationsButton.disabled = false;
+    enableNotificationsButton.textContent = 'Enable Browser Notifications';
+}
+
+async function refreshPushStatus() {
+    if (!enableNotificationsButton || !('Notification' in window)) return;
+
+    try {
+        const config = await apiRequest('/api/owner/push-subscription');
+
+        updatePushButton({
+            supported: Boolean(config.supported),
+            isSubscribed: Boolean(config.isSubscribed),
+            permission: Notification.permission
+        });
+    } catch (error) {
+        setPushStatus(error.message || 'Unable to check notification status.', 'error');
+        enableNotificationsButton.disabled = false;
+        enableNotificationsButton.textContent = 'Enable Browser Notifications';
+    }
+}
+
+async function enablePushNotifications() {
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        setPushStatus('This browser does not support push notifications.', 'error');
+        return;
+    }
+
+    if (enableNotificationsButton) {
+        enableNotificationsButton.disabled = true;
+    }
+
+    try {
+        const permission = await Notification.requestPermission();
+
+        if (permission !== 'granted') {
+            updatePushButton({ supported: true, isSubscribed: false, permission });
+            setPushStatus('Notification permission was not granted.', 'error');
+            return;
+        }
+
+        const registration = await navigator.serviceWorker.register('/sw.js');
+
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+            const config = await apiRequest('/api/owner/push-subscription');
+
+            if (!config.supported || !config.vapidPublicKey) {
+                throw new Error('Browser notifications are not configured on the server.');
+            }
+
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(config.vapidPublicKey)
+            });
+        }
+
+        await apiRequest('/api/owner/push-subscription', {
+            method: 'POST',
+            body: JSON.stringify(subscription.toJSON())
+        });
+
+        await refreshPushStatus();
+    } catch (error) {
+        setPushStatus(error.message || 'Unable to enable browser notifications.', 'error');
+        if (enableNotificationsButton) {
+            enableNotificationsButton.disabled = false;
+            enableNotificationsButton.textContent = 'Enable Browser Notifications';
+        }
+    }
+}
+
+if (enableNotificationsButton) {
+    enableNotificationsButton.addEventListener('click', enablePushNotifications);
+}
+
+const notificationsNavigationButton = document.querySelector('.nav-item[data-view="notifications"]');
+if (notificationsNavigationButton) {
+    notificationsNavigationButton.addEventListener('click', () => {
+        loadNotifications();
+        refreshPushStatus();
+    });
+}
+
 async function loadPets() {
     refreshPetsButton.disabled = true;
     showMessage(petsMessage, 'Loading registered pets...');
@@ -1245,6 +1375,7 @@ async function verifyOwner() {
         showMessage(dashboardMessage, 'Your account is verified.', 'success');
 
         await Promise.all([loadPets(), loadNotifications()]);
+        void refreshPushStatus();
     } catch (error) {
         showMessage(dashboardMessage, error.message, 'error');
     }

@@ -555,10 +555,18 @@
                         <p class="muted">View vaccination reminders and other updates about your pets.</p>
                     </div>
 
-                    <button id="refreshNotificationsButton" class="secondary-button" type="button">
-                        Refresh Notifications
-                    </button>
+                    <div class="notifications-toolbar">
+                        <button id="enableNotificationsButton" class="secondary-button" type="button">
+                            Enable Browser Notifications
+                        </button>
+
+                        <button id="refreshNotificationsButton" class="secondary-button" type="button">
+                            Refresh Notifications
+                        </button>
+                    </div>
                 </div>
+
+                <p id="pushStatus" class="message" role="status" aria-live="polite"></p>
 
                 <p id="notificationsSummary" class="message" role="status" aria-live="polite">
                     Loading notifications...
