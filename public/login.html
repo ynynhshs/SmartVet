@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/login.css">
     <script src="/js/session.js" defer></script>
+    <script src="/js/pin-boxes.js" defer></script>
     <script src="/js/login.js" defer></script>
 </head>
 <body class="login-body">
@@ -79,6 +80,13 @@
                     </form>
 
                     <div class="form-footer">
+                        <p id="backToPinFromLoginWrap" hidden>
+                            <button
+                                class="text-button"
+                                id="backToPinFromLoginButton"
+                                type="button"
+                            >Back to PIN unlock</button>
+                        </p>
                         <p>New pet owner?
                             <button
                                 class="text-button"
@@ -266,6 +274,149 @@
                             >Sign in</button>
                         </p>
                         <p>Back to <a class="back-link" href="/">SmartVet Home</a></p>
+                    </div>
+                </div>
+
+                <!-- PIN unlock view: shown when this device has a saved owner PIN -->
+                <div id="pinView" hidden>
+                    <div class="form-header">
+                        <h1>Unlock with PIN</h1>
+                        <p>Enter your PIN to open SmartVet.</p>
+                    </div>
+
+                    <div class="pin-account-card">
+                        <span class="pin-account-name" id="pinAccountName">Pet owner</span>
+                        <span class="pin-account-email" id="pinAccountEmail">email@example.com</span>
+                    </div>
+
+                    <div
+                        class="pin-boxes"
+                        id="pinBoxes"
+                        data-pin-boxes
+                        data-pin-mask
+                        data-pin-label="PIN"
+                        aria-describedby="pinMessage"></div>
+
+                    <p id="pinMessage" class="form-message" role="status" aria-live="polite"></p>
+
+                    <div class="pin-keypad" id="pinKeypad">
+                        <button type="button" class="pin-key" data-pin-digit="1">1</button>
+                        <button type="button" class="pin-key" data-pin-digit="2">2</button>
+                        <button type="button" class="pin-key" data-pin-digit="3">3</button>
+                        <button type="button" class="pin-key" data-pin-digit="4">4</button>
+                        <button type="button" class="pin-key" data-pin-digit="5">5</button>
+                        <button type="button" class="pin-key" data-pin-digit="6">6</button>
+                        <button type="button" class="pin-key" data-pin-digit="7">7</button>
+                        <button type="button" class="pin-key" data-pin-digit="8">8</button>
+                        <button type="button" class="pin-key" data-pin-digit="9">9</button>
+                        <span class="pin-key-spacer" aria-hidden="true"></span>
+                        <button type="button" class="pin-key" data-pin-digit="0">0</button>
+                        <button
+                            type="button"
+                            class="pin-key pin-key-muted"
+                            data-pin-backspace="true"
+                            aria-label="Delete last digit">⌫</button>
+                    </div>
+
+                    <button class="primary-button submit-btn" id="unlockWithPinButton" type="button">
+                        Unlock
+                    </button>
+
+                    <div class="form-footer">
+                        <p>
+                            <button class="text-button" id="usePasswordButton" type="button">
+                                Use email and password instead
+                            </button>
+                        </p>
+                        <p>
+                            <button class="text-button" id="forgotPinButton" type="button">
+                                Forgot PIN?
+                            </button>
+                        </p>
+                        <p>
+                            <button class="text-button" id="switchPinAccountButton" type="button">
+                                Use a different account
+                            </button>
+                        </p>
+                        <p>New pet owner?
+                            <button class="text-button" id="showRegisterFromPinButton" type="button">
+                                Create an owner account
+                            </button>
+                        </p>
+                        <p>Back to <a class="back-link" href="/">SmartVet Home</a></p>
+                    </div>
+                </div>
+
+                <!-- Forgot PIN: confirm email + password, then choose a new PIN -->
+                <div id="forgotPinView" hidden>
+                    <div class="form-header">
+                        <h1>Reset your PIN</h1>
+                        <p>Confirm your account details, then choose a new PIN.</p>
+                        <p class="form-header-note"><span class="req">*</span> Required fields</p>
+                    </div>
+
+                    <form id="forgotPinForm">
+                        <div class="form-field">
+                            <label for="forgotPinEmail">Email <span class="req">*</span></label>
+                            <input
+                                id="forgotPinEmail"
+                                name="email"
+                                type="email"
+                                placeholder="Enter your email"
+                                autocomplete="username"
+                                maxlength="254"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-field">
+                            <label for="forgotPinPassword">Password <span class="req">*</span></label>
+                            <input
+                                id="forgotPinPassword"
+                                name="password"
+                                type="password"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-field">
+                            <label>New PIN <span class="req">*</span></label>
+                            <div
+                                class="pin-boxes"
+                                id="forgotPinNewBoxes"
+                                data-pin-boxes
+                                data-pin-label="New PIN"></div>
+                        </div>
+
+                        <div class="form-field">
+                            <label>Confirm PIN <span class="req">*</span></label>
+                            <div
+                                class="pin-boxes"
+                                id="forgotPinConfirmBoxes"
+                                data-pin-boxes
+                                data-pin-label="Confirm PIN"></div>
+                        </div>
+
+                        <button class="primary-button submit-btn" id="resetPinButton" type="submit">
+                            Reset PIN
+                        </button>
+
+                        <p id="forgotPinMessage" class="form-message" role="status" aria-live="polite"></p>
+                    </form>
+
+                    <div class="form-footer">
+                        <p>
+                            <button class="text-button" id="backToPinButton" type="button">
+                                Back to PIN unlock
+                            </button>
+                        </p>
+                        <p>
+                            <button class="text-button" id="backToLoginButton" type="button">
+                                Back to sign in
+                            </button>
+                        </p>
                     </div>
                 </div>
             </section>

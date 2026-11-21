@@ -2322,3 +2322,347 @@ body[data-theme="dark"] .owner-follow-up-status.upcoming {
         height: 54px;
     }
 }
+
+/* ==========================================
+   SETTINGS SIDEBAR GROUP (My Account / Theme / PIN Code)
+   ========================================== */
+
+.nav-group {
+    display: grid;
+    gap: 6px;
+}
+
+.nav-caret {
+    margin-left: auto;
+    font-size: 0.78rem;
+    transition: transform 0.2s ease;
+}
+
+.nav-group.is-open .nav-caret {
+    transform: rotate(90deg);
+}
+
+.nav-group.is-current > .nav-group-toggle {
+    color: var(--clay-heading);
+    background: rgba(255, 255, 255, 0.65);
+}
+
+.nav-submenu {
+    display: grid;
+    gap: 6px;
+    padding: 4px 0 4px 16px;
+}
+
+.nav-subitem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 14px;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--clay-muted);
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-subitem::before {
+    content: '';
+    flex: 0 0 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.55;
+}
+
+.nav-subitem:hover {
+    background: rgba(255, 255, 255, 0.6);
+    color: var(--clay-heading);
+}
+
+.nav-subitem.active {
+    color: #fff;
+    background: linear-gradient(135deg, #248ce6, #2d65e2);
+    border-color: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--clay-shadow-button);
+}
+
+.nav-subitem.active::before {
+    background: #fff;
+    opacity: 1;
+}
+
+/* A collapsed sidebar has no room for the sub-menu. */
+.owner-shell.sidebar-collapsed .nav-submenu {
+    display: none;
+}
+
+/* ==========================================
+   THEME SETTINGS
+   ========================================== */
+
+.theme-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.theme-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    background: var(--clay-surface-card);
+    color: var(--clay-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: var(--clay-shadow-sm);
+    transition: all 0.2s ease;
+}
+
+.theme-option:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--clay-shadow);
+}
+
+.theme-option.is-selected {
+    border-color: var(--clay-blue);
+    box-shadow: 0 0 0 3px rgba(36, 140, 230, 0.18), var(--clay-shadow-sm);
+}
+
+.theme-option-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 46px;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: rgba(36, 140, 230, 0.12);
+    color: var(--clay-blue);
+    font-size: 1.3rem;
+}
+
+.theme-option-text {
+    display: grid;
+    gap: 2px;
+}
+
+.theme-option-text strong {
+    color: var(--clay-heading);
+    font-size: 0.98rem;
+}
+
+.theme-option-text small {
+    color: var(--clay-muted);
+    font-size: 0.8rem;
+}
+
+.theme-option-check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--clay-blue);
+    color: #fff;
+    font-size: 0.75rem;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: all 0.2s ease;
+}
+
+.theme-option.is-selected .theme-option-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ==========================================
+   PIN CODE SETTINGS
+   ========================================== */
+
+.settings-status {
+    margin: 0 0 18px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(36, 140, 230, 0.08);
+    color: var(--clay-muted);
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.settings-status.is-set {
+    background: rgba(14, 138, 102, 0.12);
+    color: #0e8a66;
+}
+
+.settings-form {
+    display: grid;
+    gap: 4px;
+}
+
+/* Keep the six boxes aligned with their left-aligned labels. */
+.settings-form .pin-boxes-grid {
+    justify-content: flex-start;
+}
+
+.settings-help {
+    margin: 18px 0 0;
+    color: var(--clay-muted);
+    font-size: 0.86rem;
+}
+
+.pin-forgot-panel {
+    margin-top: 22px;
+}
+
+.text-button {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--clay-blue);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.text-button:hover {
+    text-decoration: underline;
+}
+
+.text-button:focus-visible {
+    outline: 2px solid rgba(35, 137, 224, 0.5);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ==========================================
+   PIN SETUP BANNER
+   ========================================== */
+
+.setup-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 22px;
+    padding: 16px 18px;
+    border: 2px solid rgba(36, 140, 230, 0.35);
+    border-radius: 20px;
+    background: rgba(36, 140, 230, 0.08);
+    box-shadow: var(--clay-shadow-sm);
+}
+
+.setup-banner-icon {
+    font-size: 1.4rem;
+}
+
+.setup-banner-text {
+    flex: 1;
+    color: var(--clay-muted);
+    font-size: 0.88rem;
+}
+
+.setup-banner-text strong {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--clay-heading);
+    font-size: 0.95rem;
+}
+
+.setup-banner-close {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--clay-muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.setup-banner-close:hover {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--clay-heading);
+}
+
+/* `hidden` must always win over the flex/grid displays above. */
+.setup-banner[hidden],
+.pin-forgot-panel[hidden],
+.nav-submenu[hidden] {
+    display: none !important;
+}
+
+/* ==========================================
+   DARK THEME — SETTINGS
+   ========================================== */
+
+body[data-theme="dark"] .nav-group.is-current > .nav-group-toggle {
+    background: #203149;
+    color: var(--clay-heading);
+}
+
+body[data-theme="dark"] .nav-subitem:hover {
+    background: #203149;
+    color: var(--clay-heading);
+}
+
+body[data-theme="dark"] .theme-option {
+    background: var(--clay-surface-card);
+    border-color: #2b3d53;
+}
+
+body[data-theme="dark"] .settings-status {
+    background: #1b2b40;
+    color: var(--clay-muted);
+}
+
+body[data-theme="dark"] .settings-status.is-set {
+    background: rgba(14, 138, 102, 0.18);
+    color: #4fc3a1;
+}
+
+body[data-theme="dark"] .setup-banner {
+    background: rgba(36, 140, 230, 0.14);
+    border-color: #2f4a66;
+}
+
+body[data-theme="dark"] .setup-banner-close:hover {
+    background: #2a405b;
+}
+
+/* ==========================================
+   RESPONSIVE — SETTINGS
+   ========================================== */
+
+@media (max-width: 760px) {
+    .theme-options,
+    .settings-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .setup-banner {
+        flex-wrap: wrap;
+    }
+
+    .setup-banner-text {
+        flex: 1 1 calc(100% - 60px);
+    }
+}

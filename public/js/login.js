@@ -9,8 +9,18 @@ const registerMessage = document.getElementById('registerMessage');
 const loginView = document.getElementById('loginView');
 const registerView = document.getElementById('registerView');
 
+// PIN unlock and "Forgot PIN" views.
+const pinView = document.getElementById('pinView');
+const forgotPinView = document.getElementById('forgotPinView');
+
 const showRegisterButton = document.getElementById('showRegisterButton');
 const showLoginButton = document.getElementById('showLoginButton');
+const usePasswordButton = document.getElementById('usePasswordButton');
+const forgotPinButton = document.getElementById('forgotPinButton');
+const switchPinAccountButton = document.getElementById('switchPinAccountButton');
+const showRegisterFromPinButton = document.getElementById('showRegisterFromPinButton');
+const backToPinButton = document.getElementById('backToPinButton');
+const backToLoginButton = document.getElementById('backToLoginButton');
 
 const formSide = document.querySelector('.login-form-side');
 
@@ -26,6 +36,59 @@ const registerAvatarImage = document.getElementById('registerAvatarImage');
 let registerPhotoUrl = null;
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // matches the server-side multer limit
+
+// --- PIN unlock -----------------------------------------------------------
+const PIN_LENGTH = 6;
+
+const pinBoxesElement = document.getElementById('pinBoxes');
+const pinBoxes = pinBoxesElement ? SmartVetPinBoxes.init(pinBoxesElement) : null;
+const pinMessage = document.getElementById('pinMessage');
+const pinAccountName = document.getElementById('pinAccountName');
+const pinAccountEmail = document.getElementById('pinAccountEmail');
+const unlockWithPinButton = document.getElementById('unlockWithPinButton');
+const pinKeypad = document.getElementById('pinKeypad');
+
+// The saved account is what lets the app skip the email/password form.
+let pinAccount = SmartVetSession.getPinAccount();
+
+function renderPinAccount(account) {
+    pinAccount = account;
+
+    if (pinAccountName) {
+        pinAccountName.textContent = account && account.fullName
+            ? account.fullName
+            : 'Pet owner';
+    }
+
+    if (pinAccountEmail) {
+        pinAccountEmail.textContent = account ? account.email : '';
+    }
+}
+
+function currentPin() {
+    return pinBoxes ? pinBoxes.getValue() : '';
+}
+
+function updateUnlockButton() {
+    if (!unlockWithPinButton) return;
+
+    unlockWithPinButton.disabled = currentPin().length !== PIN_LENGTH;
+}
+
+function setPinValue(value) {
+    if (!pinBoxes) return;
+
+    pinBoxes.setValue(value);
+    pinMessage.textContent = '';
+    updateUnlockButton();
+}
+
+function clearPinValue() {
+    if (!pinBoxes) return;
+
+    pinBoxes.clear();
+    updateUnlockButton();
+}
 
 function updateAvatarInitials() {
     const parts = registerFullName.value.trim().split(/\s+/).filter(Boolean);
@@ -54,22 +117,102 @@ function openPhotoPicker() {
     registerProfilePhoto.click();
 }
 
-function showLoginView() {
-    registerView.hidden = true;
-    loginView.hidden = false;
-    registerMessage.textContent = '';
+const appViews = [
+    { id: 'login', element: loginView },
+    { id: 'register', element: registerView },
+    { id: 'pin', element: pinView },
+    { id: 'forgotPin', element: forgotPinView }
+];
+
+function showView(viewId) {
+    appViews.forEach((view) => {
+        if (view.element) {
+            view.element.hidden = view.id !== viewId;
+        }
+    });
+
     formSide.scrollTop = 0;
+    updateBackToPinLink();
+}
+
+// The email/password view keeps a way back to the PIN unlock while a saved
+// PIN account still exists.
+function updateBackToPinLink() {
+    const wrap = document.getElementById('backToPinFromLoginWrap');
+
+    if (!wrap) return;
+
+    wrap.hidden = !(pinAccount && loginView && !loginView.hidden);
+}
+
+function showLoginView() {
+    registerMessage.textContent = '';
+    showView('login');
 }
 
 function showRegisterView() {
-    loginView.hidden = true;
-    registerView.hidden = false;
     loginMessage.textContent = '';
-    formSide.scrollTop = 0;
+    showView('register');
+}
+
+function showPinView() {
+    pinMessage.textContent = '';
+    clearPinValue();
+    showView('pin');
+}
+
+function openForgotPinView() {
+    const emailField = document.getElementById('forgotPinEmail');
+
+    if (emailField && pinAccount) {
+        emailField.value = pinAccount.email || '';
+    }
+
+    const message = document.getElementById('forgotPinMessage');
+    if (message) message.textContent = '';
+
+    if (forgotPinNew) forgotPinNew.clear();
+    if (forgotPinConfirm) forgotPinConfirm.clear();
+
+    showView('forgotPin');
 }
 
 showRegisterButton.addEventListener('click', showRegisterView);
 showLoginButton.addEventListener('click', showLoginView);
+
+if (usePasswordButton) {
+    usePasswordButton.addEventListener('click', showLoginView);
+}
+
+const backToPinFromLoginButton = document.getElementById('backToPinFromLoginButton');
+if (backToPinFromLoginButton) {
+    backToPinFromLoginButton.addEventListener('click', showPinView);
+}
+
+if (forgotPinButton) {
+    forgotPinButton.addEventListener('click', openForgotPinView);
+}
+
+if (backToPinButton) {
+    backToPinButton.addEventListener('click', showPinView);
+}
+
+if (backToLoginButton) {
+    backToLoginButton.addEventListener('click', showLoginView);
+}
+
+if (showRegisterFromPinButton) {
+    showRegisterFromPinButton.addEventListener('click', showRegisterView);
+}
+
+if (switchPinAccountButton) {
+    switchPinAccountButton.addEventListener('click', () => {
+        SmartVetSession.clearPinAccount();
+        pinAccount = null;
+        clearPinValue();
+        showLoginView();
+    });
+}
 
 // Eye icon: reveal or hide the value typed into a password field.
 document.querySelectorAll('.password-toggle').forEach((button) => {
@@ -121,6 +264,42 @@ if (registerAvatarPreview) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             openPhotoPicker();
+        }
+    });
+}
+
+// PIN keypad writes into the six boxes; typing on a keyboard works too.
+if (pinKeypad) {
+    pinKeypad.addEventListener('click', (event) => {
+        const digitButton = event.target.closest('[data-pin-digit]');
+        const backspaceButton = event.target.closest('[data-pin-backspace]');
+
+        if (digitButton) {
+            pinMessage.textContent = '';
+
+            if (pinBoxes) {
+                pinBoxes.append(digitButton.dataset.pinDigit);
+            }
+
+            return;
+        }
+
+        if (backspaceButton && pinBoxes) {
+            pinBoxes.backspace();
+        }
+    });
+}
+
+if (pinBoxesElement) {
+    pinBoxesElement.addEventListener('pinchange', () => {
+        pinMessage.textContent = '';
+        updateUnlockButton();
+    });
+
+    pinBoxesElement.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            unlockWithPin();
         }
     });
 }
@@ -193,6 +372,11 @@ loginForm.addEventListener('submit', async (event) => {
             body: JSON.stringify({ email, password })
         });
 
+        // Offer the fast PIN unlock on the next visit when a PIN is set.
+        if (data.user && data.user.hasPin) {
+            SmartVetSession.savePinAccount(data.user);
+        }
+
         saveAuthenticatedSession(data);
     } catch (error) {
         loginMessage.textContent = error.message || 'Unable to sign in.';
@@ -201,6 +385,111 @@ loginForm.addEventListener('submit', async (event) => {
         loginButton.textContent = 'Sign in';
     }
 });
+
+// Unlock the saved owner account with its PIN.
+async function unlockWithPin() {
+    const email = pinAccount ? pinAccount.email : '';
+    const pin = currentPin();
+
+    if (!email) {
+        pinMessage.textContent = 'No saved account was found. Sign in with your email and password.';
+        return;
+    }
+
+    if (pin.length !== PIN_LENGTH) {
+        pinMessage.textContent = `Enter exactly ${PIN_LENGTH} digits.`;
+        return;
+    }
+
+    unlockWithPinButton.disabled = true;
+    const originalLabel = unlockWithPinButton.textContent;
+    unlockWithPinButton.textContent = 'Unlocking...';
+    pinMessage.textContent = '';
+
+    try {
+        const data = await requestJson('/api/auth/pin/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            body: JSON.stringify({ email, pin })
+        });
+
+        // Keep the saved account current, then continue into the app.
+        SmartVetSession.savePinAccount(data.user);
+        saveAuthenticatedSession(data);
+    } catch (error) {
+        pinMessage.textContent = error.message || 'Unable to unlock with that PIN.';
+        clearPinValue();
+    } finally {
+        unlockWithPinButton.disabled = false;
+        unlockWithPinButton.textContent = originalLabel;
+    }
+}
+
+if (unlockWithPinButton) {
+    unlockWithPinButton.addEventListener('click', unlockWithPin);
+}
+
+// "Forgot PIN" flow: verify the email and password, then store a new PIN.
+const forgotPinForm = document.getElementById('forgotPinForm');
+const forgotPinEmail = document.getElementById('forgotPinEmail');
+const forgotPinPassword = document.getElementById('forgotPinPassword');
+const forgotPinNewBoxes = document.getElementById('forgotPinNewBoxes');
+const forgotPinConfirmBoxes = document.getElementById('forgotPinConfirmBoxes');
+const forgotPinNew = forgotPinNewBoxes ? SmartVetPinBoxes.init(forgotPinNewBoxes) : null;
+const forgotPinConfirm = forgotPinConfirmBoxes
+    ? SmartVetPinBoxes.init(forgotPinConfirmBoxes)
+    : null;
+const forgotPinMessage = document.getElementById('forgotPinMessage');
+const resetPinButton = document.getElementById('resetPinButton');
+
+if (forgotPinForm) {
+    forgotPinForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        forgotPinMessage.textContent = '';
+
+        const email = forgotPinEmail.value.trim();
+        const password = forgotPinPassword.value;
+        const pin = forgotPinNew ? forgotPinNew.getValue() : '';
+        const confirmPin = forgotPinConfirm ? forgotPinConfirm.getValue() : '';
+
+        if (!/^\d{6}$/.test(pin)) {
+            forgotPinMessage.textContent = 'Your PIN must be exactly 6 digits.';
+            return;
+        }
+
+        if (pin !== confirmPin) {
+            forgotPinMessage.textContent = 'The PINs do not match.';
+            return;
+        }
+
+        resetPinButton.disabled = true;
+        const originalLabel = resetPinButton.textContent;
+        resetPinButton.textContent = 'Resetting...';
+
+        try {
+            const data = await requestJson('/api/auth/pin/reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json'
+                },
+                body: JSON.stringify({ email, password, pin })
+            });
+
+            SmartVetSession.savePinAccount(data.user);
+            saveAuthenticatedSession(data);
+        } catch (error) {
+            forgotPinMessage.textContent = error.message || 'Unable to reset your PIN.';
+        } finally {
+            resetPinButton.disabled = false;
+            resetPinButton.textContent = originalLabel;
+        }
+    });
+}
 
 // NEW: Updated Owner Registration Process (Using FormData for the photo)
 registerForm.addEventListener('submit', async (event) => {
@@ -248,3 +537,11 @@ registerForm.addEventListener('submit', async (event) => {
         registerButton.textContent = 'Create owner account';
     }
 });
+
+// Show the fast PIN unlock when this device already has a saved owner PIN.
+if (pinAccount) {
+    renderPinAccount(pinAccount);
+    showPinView();
+}
+
+updateUnlockButton();

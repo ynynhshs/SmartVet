@@ -27,12 +27,18 @@ const userSchema = new mongoose.Schema(
         profilePhotoSize: { type: Number, default: 0, min: 0 },
 
         status: { type: String, enum: ['active', 'disabled'], default: 'active', required: true },
-        lastLoginAt: { type: Date, default: null }
+        lastLoginAt: { type: Date, default: null },
+
+        // --- APP LOCK PIN (owner fast sign-in) ---
+        // Only pet owners can set a PIN. It is stored as a bcrypt hash and is
+        // never returned by queries unless explicitly selected.
+        pinHash: { type: String, default: null, select: false },
+        pinSetAt: { type: Date, default: null }
     },
     {
         timestamps: true,
         versionKey: false,
-        toJSON: { transform: (doc, ret) => { delete ret.passwordHash; return ret; } }
+        toJSON: { transform: (doc, ret) => { delete ret.passwordHash; delete ret.pinHash; return ret; } }
     }
 );
 

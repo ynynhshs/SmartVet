@@ -415,3 +415,86 @@ a {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(35, 137, 224, 0.25);
 }
+
+/* ==========================================
+   SIX-DIGIT PIN BOXES (shared by login + owner settings)
+   ========================================== */
+
+.pin-boxes-grid {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 4px 0 18px;
+}
+
+.pin-boxes-grid .pin-box {
+    width: 46px;
+    height: 54px;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    border-radius: 14px;
+    background: #e4eefb;
+    color: var(--clay-heading);
+    font-family: inherit;
+    font-size: 1.3rem;
+    font-weight: 800;
+    text-align: center;
+    box-shadow: inset 0 2px 4px rgba(15, 45, 80, 0.08);
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pin-boxes-grid .pin-box:focus {
+    outline: none;
+    border-color: var(--clay-blue);
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(35, 137, 224, 0.18);
+}
+
+.pin-boxes-grid .pin-box.is-filled {
+    border-color: var(--clay-blue);
+    background: #ffffff;
+}
+
+body[data-theme="dark"] .pin-boxes-grid .pin-box {
+    background: #142337;
+    border-color: #40536a;
+    color: var(--clay-text);
+}
+
+body[data-theme="dark"] .pin-boxes-grid .pin-box:focus,
+body[data-theme="dark"] .pin-boxes-grid .pin-box.is-filled {
+    background: #1b2b40;
+    border-color: var(--clay-blue);
+    color: var(--clay-heading);
+}
+
+/* Masked PIN entry: a dot appears for each digit instead of the digit itself. */
+.pin-boxes-grid.is-masked .pin-box {
+    position: relative;
+    color: transparent;
+    caret-color: var(--clay-blue);
+    user-select: none;
+}
+
+.pin-boxes-grid.is-masked .pin-box.is-filled::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--clay-heading);
+    transform: translate(-50%, -50%);
+}
+
+@media (max-width: 560px) {
+    .pin-boxes-grid {
+        gap: 8px;
+    }
+
+    .pin-boxes-grid .pin-box {
+        width: 42px;
+        height: 50px;
+    }
+}

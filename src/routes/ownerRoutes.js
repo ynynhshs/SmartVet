@@ -22,6 +22,11 @@ const {
 } = require('../middleware/authMiddleware');
 
 const {
+    hashPin,
+    isValidPin
+} = require('../services/authService');
+
+const {
     isPushConfigured,
     VAPID_PUBLIC_KEY
 } = require('../services/pushService');
@@ -48,7 +53,9 @@ function ownerProfilePayload(user) {
         nationality: doc.nationality || '',
         govId: doc.govId || '',
         occupation: doc.occupation || '',
-        hasProfilePhoto: Boolean(doc.profilePhotoFilename && doc.profilePhotoContentType)
+        hasProfilePhoto: Boolean(doc.profilePhotoFilename && doc.profilePhotoContentType),
+        hasPin: Boolean(doc.pinHash),
+        pinSetAt: doc.pinSetAt || null
     };
 }
 
@@ -201,7 +208,7 @@ router.post('/profile/photo', handleProfilePhotoUpload, async (req, res, next) =
 router.get('/profile', async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id)
-            .select('fullName email phone address permanentAddress dateOfBirth gender civilStatus nationality govId occupation role profilePhotoFilename profilePhotoContentType')
+            .select('fullName email phone address permanentAddress dateOfBirth gender civilStatus nationality govId occupation role profilePhotoFilename profilePhotoContentType pinHash pinSetAt')
             .lean();
 
         if (!user || user.role !== 'owner') {
@@ -291,6 +298,70 @@ router.patch(
         }
     }
 );
+
+// POST /api/owner/pin
+// Create or replace the owner's app-lock PIN from the Settings page.
+router.post(
+    '/pin',
+    [
+        body('pin').isString().custom((value) => isValidPin(value))
+            .withMessage('PIN must be exactly 6 digits.')
+    ],
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: errors.array()[0].msg
+            });
+        }
+
+        try {
+            const user = await User.findById(req.user.id);
+
+            if (!user || user.role !== 'owner') {
+                return res.status(404).json({ success: false, message: 'Owner account not found.' });
+            }
+
+            user.pinHash = await hashPin(req.body.pin);
+            user.pinSetAt = new Date();
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'PIN saved. You can now unlock the app with this PIN.',
+                hasPin: true,
+                pinSetAt: user.pinSetAt
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+);
+
+// DELETE /api/owner/pin
+// Removes the app-lock PIN so the owner must sign in with email and password.
+router.delete('/pin', async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (!user || user.role !== 'owner') {
+            return res.status(404).json({ success: false, message: 'Owner account not found.' });
+        }
+
+        user.pinHash = null;
+        user.pinSetAt = null;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'PIN removed.',
+            hasPin: false
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
 
 // GET /api/owner/pets/:petId/photo
 router.get('/pets/:petId/photo', async (req, res, next) => {

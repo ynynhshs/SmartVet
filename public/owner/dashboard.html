@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/css/owner-dashboard.css">
 
     <script src="/js/session.js" defer></script>
+    <script src="/js/pin-boxes.js" defer></script>
     <script src="/js/owner-dashboard.js" defer></script>
 </head>
 <body>
@@ -132,27 +133,46 @@
                     <span class="nav-count" id="sidebarUnreadCount">—</span>
                 </button>
                 
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-view="account"
-                    aria-label="My Account">
-                    <span class="nav-icon" aria-hidden="true">👤</span>
-                    <span>My Account</span>
-                </button>
+                <div class="nav-group" data-group="settings">
+                    <button
+                        type="button"
+                        class="nav-item nav-group-toggle"
+                        data-group-toggle="settings"
+                        aria-label="Settings"
+                        aria-expanded="false">
+                        <span class="nav-icon" aria-hidden="true">⚙</span>
+                        <span>Settings</span>
+                        <span class="nav-caret" aria-hidden="true">▸</span>
+                    </button>
+
+                    <div class="nav-submenu" data-submenu="settings" hidden>
+                        <button
+                            type="button"
+                            class="nav-subitem"
+                            data-view="account"
+                            aria-label="My Account">
+                            <span>My Account</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="nav-subitem"
+                            data-view="theme"
+                            aria-label="Theme">
+                            <span>Theme</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="nav-subitem"
+                            data-view="pin"
+                            aria-label="PIN Code">
+                            <span>PIN Code</span>
+                        </button>
+                    </div>
+                </div>
             </nav>
 
-            <div class="sidebar-theme-area">
-                <button
-                    type="button"
-                    class="sidebar-theme-toggle"
-                    id="ownerThemeToggle"
-                    aria-label="Switch to dark mode"
-                    title="Switch to dark mode">
-                    <span class="theme-toggle-icon" aria-hidden="true">☾</span>
-                    <span class="theme-toggle-label">Dark mode</span>
-                </button>
-            </div>
         </aside>
         <button
             type="button"
@@ -179,6 +199,25 @@
                 <p id="dashboardMessage" class="message" role="status" aria-live="polite">
                     Checking your account...
                 </p>
+
+                <div class="setup-banner" id="pinSetupBanner" hidden>
+                    <span class="setup-banner-icon" aria-hidden="true">🔒</span>
+                    <span class="setup-banner-text">
+                        <strong>Unlock faster with a PIN.</strong>
+                        Save a 6-digit PIN and skip typing your email and password
+                        the next time you open the app.
+                    </span>
+                    <button type="button" class="secondary-button" id="setupPinButton">
+                        Set up PIN
+                    </button>
+                    <button
+                        type="button"
+                        class="setup-banner-close"
+                        id="dismissPinBanner"
+                        aria-label="Dismiss">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
 
                 <div class="overview-stats">
                     <article class="stat-card">
@@ -233,20 +272,6 @@
                             </span>
                             <span class="quick-arrow" aria-hidden="true">→</span>
                         </button>
-
-                        <a
-                            class="quick-action"
-                            href="https://github.com/ynynhshs/SmartVet/releases/latest/download/SmartVet.apk"
-                            download="SmartVet.apk">
-                            <span class="quick-action-icon" aria-hidden="true">↓</span>
-                            <span>
-                                <strong>Download SmartVet for Android</strong>
-                                <small>
-                                    Get the pet-owner app. Android may ask you to allow installation from this source.
-                                </small>
-                            </span>
-                            <span class="quick-arrow" aria-hidden="true">↗</span>
-                        </a>
                     </div>
                 </section>
             </section>
@@ -704,6 +729,179 @@
                         </div>
                         
                         <p id="accountProfileMessage" class="message" role="status" aria-live="polite" style="margin-top: 10px; text-align: center;"></p>
+                    </form>
+                </section>
+            </section>
+
+            <!-- THEME VIEW -->
+            <section class="owner-view" id="themeSection" data-page="theme" hidden>
+                <div class="page-heading">
+                    <div>
+                        <p class="page-eyebrow">USER SETTINGS</p>
+                        <h1>Theme</h1>
+                        <p class="muted">Choose how SmartVet looks on this device.</p>
+                    </div>
+                </div>
+
+                <p id="themeMessage" class="message" role="status" aria-live="polite"></p>
+
+                <section class="workspace-panel">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Appearance</h2>
+                            <p class="muted">
+                                The theme is saved on this device and is applied
+                                automatically the next time you open the app.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="theme-options" role="group" aria-label="Theme">
+                        <button type="button" class="theme-option" data-theme-option="light">
+                            <span class="theme-option-icon" aria-hidden="true">☀</span>
+                            <span class="theme-option-text">
+                                <strong>Light</strong>
+                                <small>Bright surfaces and blue accents.</small>
+                            </span>
+                            <span class="theme-option-check" aria-hidden="true">✓</span>
+                        </button>
+
+                        <button type="button" class="theme-option" data-theme-option="dark">
+                            <span class="theme-option-icon" aria-hidden="true">☾</span>
+                            <span class="theme-option-text">
+                                <strong>Dark</strong>
+                                <small>Easier on the eyes at night.</small>
+                            </span>
+                            <span class="theme-option-check" aria-hidden="true">✓</span>
+                        </button>
+                    </div>
+                </section>
+            </section>
+
+            <!-- PIN CODE VIEW -->
+            <section class="owner-view" id="pinSection" data-page="pin" hidden>
+                <div class="page-heading">
+                    <div>
+                        <p class="page-eyebrow">USER SETTINGS</p>
+                        <h1>PIN Code</h1>
+                        <p class="muted">
+                            Unlock the app with a PIN instead of typing your email
+                            and password every time.
+                        </p>
+                    </div>
+                </div>
+
+                <p id="pinMessage" class="message" role="status" aria-live="polite"></p>
+
+                <section class="workspace-panel">
+                    <div class="section-heading">
+                        <div>
+                            <h2>App lock PIN</h2>
+                            <p class="muted">
+                                Use exactly 6 digits. Once it is saved, this device
+                                remembers your account and lets you unlock it with
+                                your PIN.
+                            </p>
+                        </div>
+                    </div>
+
+                    <p class="settings-status" id="pinStatus">Loading your PIN status...</p>
+
+                    <form id="pinForm" class="settings-form" novalidate>
+                        <div class="form-field">
+                            <label>New PIN</label>
+                            <div
+                                class="pin-boxes"
+                                id="newPinBoxes"
+                                data-pin-boxes
+                                data-pin-label="New PIN"></div>
+                        </div>
+
+                        <div class="form-field">
+                            <label>Confirm PIN</label>
+                            <div
+                                class="pin-boxes"
+                                id="confirmPinBoxes"
+                                data-pin-boxes
+                                data-pin-label="Confirm PIN"></div>
+                        </div>
+
+                        <p id="pinFormMessage" class="message" role="status" aria-live="polite"></p>
+
+                        <div class="form-actions">
+                            <button type="submit" class="primary-button" id="savePinButton">
+                                Save PIN
+                            </button>
+                            <button type="button" class="secondary-button" id="removePinButton" hidden>
+                                Remove PIN
+                            </button>
+                        </div>
+                    </form>
+
+                    <p class="settings-help">
+                        Forgot your PIN?
+                        <button type="button" class="text-button" id="forgotPinButton">
+                            Reset it with your email and password
+                        </button>
+                    </p>
+                </section>
+
+                <section class="workspace-panel pin-forgot-panel" id="forgotPinPanel" hidden>
+                    <div class="section-heading">
+                        <div>
+                            <h2>Reset your PIN</h2>
+                            <p class="muted">
+                                Confirm your email and password, then choose a new PIN.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form id="forgotPinForm" class="settings-form" novalidate>
+                        <div class="form-field">
+                            <label for="forgotPinEmail">Email</label>
+                            <input
+                                id="forgotPinEmail"
+                                type="email"
+                                maxlength="254"
+                                autocomplete="username">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="forgotPinPassword">Password</label>
+                            <input
+                                id="forgotPinPassword"
+                                type="password"
+                                autocomplete="current-password">
+                        </div>
+
+                        <div class="form-field">
+                            <label>New PIN</label>
+                            <div
+                                class="pin-boxes"
+                                id="forgotPinNewBoxes"
+                                data-pin-boxes
+                                data-pin-label="New PIN"></div>
+                        </div>
+
+                        <div class="form-field">
+                            <label>Confirm PIN</label>
+                            <div
+                                class="pin-boxes"
+                                id="forgotPinConfirmBoxes"
+                                data-pin-boxes
+                                data-pin-label="Confirm PIN"></div>
+                        </div>
+
+                        <p id="forgotPinMessage" class="message" role="status" aria-live="polite"></p>
+
+                        <div class="form-actions">
+                            <button type="submit" class="primary-button" id="resetPinButton">
+                                Reset PIN
+                            </button>
+                            <button type="button" class="secondary-button" id="cancelForgotPinButton">
+                                Cancel
+                            </button>
+                        </div>
                     </form>
                 </section>
             </section>

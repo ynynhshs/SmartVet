@@ -5,6 +5,9 @@
 
     const TOKEN_KEY = 'smartvetAccessToken';
     const USER_KEY = 'smartvetUser';
+    // Remembers which owner account has a PIN so the login page can offer a
+    // fast PIN unlock on the next visit.
+    const PIN_ACCOUNT_KEY = 'smartvetPinAccount';
 
     function safeGet(storage, key) {
         try {
@@ -85,6 +88,41 @@
         clear() {
             remove(TOKEN_KEY);
             remove(USER_KEY);
+        },
+
+        getPinAccount() {
+            const raw = read(PIN_ACCOUNT_KEY);
+            if (!raw) return null;
+
+            try {
+                const parsed = JSON.parse(raw);
+
+                if (!parsed || typeof parsed.email !== 'string' || parsed.email.length === 0) {
+                    return null;
+                }
+
+                return {
+                    email: parsed.email,
+                    fullName: typeof parsed.fullName === 'string' ? parsed.fullName : ''
+                };
+            } catch (error) {
+                return null;
+            }
+        },
+
+        savePinAccount(user) {
+            if (!user || typeof user.email !== 'string' || user.email.length === 0) {
+                throw new Error('A saved account requires an email address.');
+            }
+
+            write(PIN_ACCOUNT_KEY, JSON.stringify({
+                email: user.email,
+                fullName: String(user.fullName || '')
+            }));
+        },
+
+        clearPinAccount() {
+            remove(PIN_ACCOUNT_KEY);
         }
     };
 })(window);

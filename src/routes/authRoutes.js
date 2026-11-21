@@ -7,7 +7,15 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
 
 const User = require('../models/User');
-const { hashPassword, comparePassword, createAccessToken } = require('../services/authService');
+const {
+    hashPassword,
+    comparePassword,
+    hashPin,
+    comparePin,
+    isValidPin,
+    PIN_MIN_LENGTH,
+    createAccessToken
+} = require('../services/authService');
 const { requireAuth } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -69,6 +77,18 @@ const loginLimiter = rateLimit({
 const registerLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false,
     message: { success: false, message: 'Too many registration attempts. Please try again later.' }
+});
+
+// PIN sign-in and PIN reset are intentionally stricter than the password
+// login limiter: a PIN has far fewer possible values than a password.
+const pinLoginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false,
+    message: { success: false, message: 'Too many PIN attempts. Please try again later.' }
+});
+
+const pinResetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false,
+    message: { success: false, message: 'Too many PIN reset attempts. Please try again later.' }
 });
 
 // POST /api/auth/register
@@ -155,7 +175,8 @@ router.post(
                     id: user._id.toString(),
                     fullName: user.fullName,
                     email: user.email,
-                    role: user.role
+                    role: user.role,
+                    hasPin: Boolean(user.pinHash)
                 }
             });
         } catch (error) {
@@ -185,7 +206,7 @@ router.post(
         const password = req.body.password;
 
         try {
-            const user = await User.findOne({ email }).select('+passwordHash');
+            const user = await User.findOne({ email }).select('+passwordHash +pinHash');
             if (!user) {
                 return res.status(401).json({ success: false, message: 'Invalid email or password.' });
             }
@@ -205,7 +226,149 @@ router.post(
                 tokenType: 'Bearer',
                 accessToken,
                 expiresIn: process.env.JWT_EXPIRES_IN || '1h',
-                user: { id: user._id.toString(), fullName: user.fullName, email: user.email, role: user.role }
+                user: {
+                    id: user._id.toString(),
+                    fullName: user.fullName,
+                    email: user.email,
+                    role: user.role,
+                    hasPin: Boolean(user.pinHash)
+                }
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+);
+
+// POST /api/auth/pin/login
+// Lets a pet owner unlock the app with the PIN they saved in Settings instead
+// of typing their email and password.
+router.post(
+    '/pin/login',
+    pinLoginLimiter,
+    [
+        body('email').isString().trim().isEmail().withMessage('Please enter a valid email address.'),
+        body('pin').isString().custom((value) => isValidPin(value))
+            .withMessage('PIN must be exactly 6 digits.')
+    ],
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: `Please enter your email and a ${PIN_MIN_LENGTH}-digit PIN.`
+            });
+        }
+
+        const email = req.body.email.trim().toLowerCase();
+        const pin = req.body.pin;
+
+        try {
+            const user = await User.findOne({ email }).select('+pinHash');
+
+            // Answer with one generic message so the endpoint cannot be used to
+            // discover which accounts exist or which accounts have a PIN.
+            const pinMatches = user
+                && user.role === 'owner'
+                && user.status === 'active'
+                && Boolean(user.pinHash)
+                ? await comparePin(pin, user.pinHash)
+                : false;
+
+            if (!pinMatches) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or PIN.'
+                });
+            }
+
+            const accessToken = createAccessToken(user);
+            user.lastLoginAt = new Date();
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'PIN accepted.',
+                tokenType: 'Bearer',
+                accessToken,
+                expiresIn: process.env.JWT_EXPIRES_IN || '1h',
+                user: {
+                    id: user._id.toString(),
+                    fullName: user.fullName,
+                    email: user.email,
+                    role: user.role,
+                    hasPin: true
+                }
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+);
+
+// POST /api/auth/pin/reset
+// "Forgot PIN" flow: the owner proves ownership with their email and password,
+// then chooses a new PIN. Returns a fresh session because the credentials were
+// verified successfully.
+router.post(
+    '/pin/reset',
+    pinResetLimiter,
+    [
+        body('email').isString().trim().isEmail().withMessage('Please enter a valid email address.'),
+        body('password').isString().notEmpty()
+            .custom((value) => Buffer.byteLength(value, 'utf8') <= 72)
+            .withMessage('Password must be 72 bytes or fewer.'),
+        body('pin').isString().custom((value) => isValidPin(value))
+            .withMessage('PIN must be exactly 6 digits.')
+    ],
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: `Please enter your email, password, and a ${PIN_MIN_LENGTH}-digit PIN.`
+            });
+        }
+
+        const email = req.body.email.trim().toLowerCase();
+        const password = req.body.password;
+        const pin = req.body.pin;
+
+        try {
+            const user = await User.findOne({ email }).select('+passwordHash +pinHash');
+
+            const credentialsAreValid = user
+                && user.role === 'owner'
+                && user.status === 'active'
+                ? await comparePassword(password, user.passwordHash)
+                : false;
+
+            if (!credentialsAreValid) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or password.'
+                });
+            }
+
+            user.pinHash = await hashPin(pin);
+            user.pinSetAt = new Date();
+            await user.save();
+
+            const accessToken = createAccessToken(user);
+
+            return res.status(200).json({
+                success: true,
+                message: 'Your PIN has been reset.',
+                tokenType: 'Bearer',
+                accessToken,
+                expiresIn: process.env.JWT_EXPIRES_IN || '1h',
+                user: {
+                    id: user._id.toString(),
+                    fullName: user.fullName,
+                    email: user.email,
+                    role: user.role,
+                    hasPin: true
+                }
             });
         } catch (error) {
             return next(error);
@@ -214,8 +377,21 @@ router.post(
 );
 
 // GET /api/auth/me
-router.get('/me', requireAuth, (req, res) => {
-    return res.status(200).json({ success: true, user: req.user, tokenExpiresAt: req.auth.expiresAt });
+router.get('/me', requireAuth, async (req, res, next) => {
+    try {
+        // pinHash is excluded from the default projection, so read it separately
+        // and expose only a boolean to the client.
+        const user = await User.findById(req.user.id).select('pinHash').lean();
+
+        return res.status(200).json({
+            success: true,
+            user: req.user,
+            hasPin: Boolean(user && user.pinHash),
+            tokenExpiresAt: req.auth.expiresAt
+        });
+    } catch (error) {
+        return next(error);
+    }
 });
 
 module.exports = router;

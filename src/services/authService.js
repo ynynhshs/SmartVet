@@ -50,6 +50,39 @@ async function comparePassword(password, passwordHash) {
     return bcrypt.compare(password, passwordHash);
 }
 
+// --- App-lock PIN helpers -------------------------------------------------
+// Owners may set a numeric PIN (6-12 digits) that unlocks the app without
+// typing their email and password. The PIN is hashed with bcrypt just like a
+// password, and the endpoints that accept it are rate limited.
+const PIN_MIN_LENGTH = 6;
+const PIN_MAX_LENGTH = 6;
+const PIN_ROUNDS = 10;
+const PIN_PATTERN = new RegExp(`^\\d{${PIN_MIN_LENGTH},${PIN_MAX_LENGTH}}$`);
+
+function isValidPin(pin) {
+    return typeof pin === 'string' && PIN_PATTERN.test(pin);
+}
+
+async function hashPin(pin) {
+    if (!isValidPin(pin)) {
+        throw new Error('PIN must be exactly 6 digits.');
+    }
+
+    return bcrypt.hash(pin, PIN_ROUNDS);
+}
+
+async function comparePin(pin, pinHash) {
+    if (
+        typeof pin !== 'string' ||
+        typeof pinHash !== 'string' ||
+        pinHash.length === 0
+    ) {
+        return false;
+    }
+
+    return bcrypt.compare(pin, pinHash);
+}
+
 // Create a signed access token for an authenticated user.
 // Store only the user's ID in the token; the backend will
 // retrieve the current role and account status from MongoDB.
@@ -101,6 +134,11 @@ function verifyAccessToken(token) {
 module.exports = {
     hashPassword,
     comparePassword,
+    hashPin,
+    comparePin,
+    isValidPin,
+    PIN_MIN_LENGTH,
+    PIN_MAX_LENGTH,
     createAccessToken,
     verifyAccessToken
 };

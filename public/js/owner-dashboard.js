@@ -160,16 +160,25 @@ if (petPhotoInput && petPhotoPreviewContainer && petPhotoPreview && petPhotoFile
 
 
 // Sidebar & View Navigation Logic
+const SETTINGS_VIEWS = ['account', 'theme', 'pin'];
+
+function isSidebarCollapsed() {
+    const shell = document.querySelector('.owner-shell');
+    return Boolean(shell && shell.classList.contains('sidebar-collapsed'));
+}
+
 function switchView(targetView) {
-    const navItems = document.querySelectorAll('.nav-item');
     const views = document.querySelectorAll('.owner-view');
 
-    navItems.forEach((item) => {
-        if (item.dataset.view === targetView) {
-            item.classList.add('active');
+    // Both top-level items and Settings sub-items carry data-view.
+    document.querySelectorAll('[data-view]').forEach((item) => {
+        const isActive = item.dataset.view === targetView;
+
+        item.classList.toggle('active', isActive);
+
+        if (isActive) {
             item.setAttribute('aria-current', 'page');
         } else {
-            item.classList.remove('active');
             item.removeAttribute('aria-current');
         }
     });
@@ -183,13 +192,63 @@ function switchView(targetView) {
             view.hidden = true;
         }
     });
+
+    // Keep the Settings group expanded while one of its pages is open.
+    const group = document.querySelector('.nav-group[data-group="settings"]');
+
+    if (group) {
+        const isSettingsView = SETTINGS_VIEWS.includes(targetView);
+        const toggle = group.querySelector('[data-group-toggle]');
+        const submenu = group.querySelector('[data-submenu]');
+
+        group.classList.toggle('is-open', isSettingsView);
+        group.classList.toggle('is-current', isSettingsView);
+
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', String(isSettingsView));
+        }
+
+        if (submenu) {
+            submenu.hidden = !isSettingsView;
+        }
+    }
 }
 
-document.querySelectorAll('.nav-item').forEach((button) => {
+document.querySelectorAll('.nav-item[data-view]').forEach((button) => {
     button.addEventListener('click', () => {
         switchView(button.dataset.view);
     });
 });
+
+document.querySelectorAll('.nav-subitem[data-view]').forEach((button) => {
+    button.addEventListener('click', () => {
+        switchView(button.dataset.view);
+    });
+});
+
+// The Settings group expands its sub-menu. On a collapsed desktop sidebar the
+// sub-menu has no room, so the toggle jumps straight to the first settings page.
+const settingsGroupToggle = document.querySelector('[data-group-toggle="settings"]');
+
+if (settingsGroupToggle) {
+    settingsGroupToggle.addEventListener('click', () => {
+        const group = settingsGroupToggle.closest('.nav-group');
+        const submenu = group ? group.querySelector('[data-submenu]') : null;
+
+        if (isSidebarCollapsed()) {
+            switchView('account');
+            return;
+        }
+
+        const isOpen = Boolean(group && group.classList.toggle('is-open'));
+
+        settingsGroupToggle.setAttribute('aria-expanded', String(isOpen));
+
+        if (submenu) {
+            submenu.hidden = !isOpen;
+        }
+    });
+}
 
 document.querySelectorAll('.quick-action').forEach((button) => {
     button.addEventListener('click', () => {
@@ -1371,6 +1430,7 @@ async function verifyOwner() {
         }
 
         ownerVerified = true;
+        updatePinSetupBanner(Boolean(data.hasPin));
         welcomeHeading.textContent = `Welcome, ${data.user.fullName || 'Pet Owner'}`;
         showMessage(dashboardMessage, 'Your account is verified.', 'success');
 
@@ -1608,7 +1668,7 @@ if (applyOwnerFeedingFiltersButton) {
     mobileClose.addEventListener('click', () => setMobileSidebarOpen(false, true));
     backdrop.addEventListener('click', () => setMobileSidebarOpen(false, true));
 
-    document.querySelectorAll('.nav-item').forEach((item) => {
+    document.querySelectorAll('.nav-item[data-view], .nav-subitem').forEach((item) => {
         item.addEventListener('click', () => {
             if (mobileQuery.matches) {
                 setMobileSidebarOpen(false, true);
@@ -1632,49 +1692,55 @@ if (applyOwnerFeedingFiltersButton) {
 
 /* SmartVet shared light/dark theme */
 (function initializeOwnerTheme() {
-    const toggle = document.getElementById('ownerThemeToggle');
-
-    if (!toggle) return;
-
-    const icon = toggle.querySelector('.theme-toggle-icon');
-    const label = toggle.querySelector('.theme-toggle-label');
     const storageKey = 'smartvetTheme';
+    const themeMessage = document.getElementById('themeMessage');
+    const optionButtons = Array.from(
+        document.querySelectorAll('[data-theme-option]')
+    );
+
+    function currentTheme() {
+        return document.body.dataset.theme === 'dark' ? 'dark' : 'light';
+    }
 
     function applyTheme(theme) {
         const isDark = theme === 'dark';
 
         document.body.dataset.theme = isDark ? 'dark' : 'light';
 
-        toggle.setAttribute('aria-pressed', String(isDark));
-        toggle.setAttribute(
-            'aria-label',
-            isDark ? 'Switch to light mode' : 'Switch to dark mode'
-        );
-        toggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+        optionButtons.forEach((button) => {
+            const selected = button.dataset.themeOption === (isDark ? 'dark' : 'light');
 
-        if (icon) {
-            icon.textContent = isDark ? '☀' : '☾';
-        }
-
-        if (label) {
-            label.textContent = isDark ? 'Light mode' : 'Dark mode';
-        }
+            button.classList.toggle('is-selected', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
     }
 
     applyTheme(localStorage.getItem(storageKey) === 'dark' ? 'dark' : 'light');
 
-    toggle.addEventListener('click', () => {
-    const nextTheme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+    optionButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const nextTheme = button.dataset.themeOption === 'dark' ? 'dark' : 'light';
 
-    document.body.classList.add('theme-transitioning');
+            if (nextTheme === currentTheme()) return;
 
-    applyTheme(nextTheme);
-    localStorage.setItem(storageKey, nextTheme);
+            document.body.classList.add('theme-transitioning');
 
-    window.setTimeout(() => {
-        document.body.classList.remove('theme-transitioning');
-    }, 400);
-});
+            applyTheme(nextTheme);
+            localStorage.setItem(storageKey, nextTheme);
+
+            if (themeMessage) {
+                showMessage(
+                    themeMessage,
+                    nextTheme === 'dark' ? 'Dark theme applied.' : 'Light theme applied.',
+                    'success'
+                );
+            }
+
+            window.setTimeout(() => {
+                document.body.classList.remove('theme-transitioning');
+            }, 400);
+        });
+    });
 })();
 
 /* ==========================================
@@ -1722,6 +1788,7 @@ function updateAccountInitials(fullName) {
 function displayOwnerProfile(user) {
     accountFullName.value = user.fullName || '';
     accountEmail.value = user.email || '';
+    ownerEmail = user.email || '';
     accountPhone.value = user.phone || '';
     accountAddress.value = user.address || '';
     accountPermanentAddress.value = user.permanentAddress || '';
@@ -1859,7 +1926,7 @@ async function loadOwnerProfile() {
     }
 }
 
-const accountNavigationButton = document.querySelector('.nav-item[data-view="account"]');
+const accountNavigationButton = document.querySelector('[data-view="account"]');
 if (accountNavigationButton) {
     accountNavigationButton.addEventListener('click', loadOwnerProfile);
 }
@@ -1923,5 +1990,328 @@ if (accountProfileForm) {
     });
 }
 
+
+/* ==========================================
+   SETTINGS — PIN CODE & PIN SETUP BANNER
+   ========================================== */
+
+const PIN_LENGTH = 6;
+const PIN_PATTERN = new RegExp(`^\\d{${PIN_LENGTH}}$`);
+const PIN_BANNER_KEY = 'smartvetOwnerPinBannerDismissed';
+
+let ownerEmail = '';
+let pinRemoveArmed = false;
+let pinRemoveTimer = null;
+
+const pinSetupBanner = document.getElementById('pinSetupBanner');
+const setupPinButton = document.getElementById('setupPinButton');
+const dismissPinBanner = document.getElementById('dismissPinBanner');
+
+const pinNavigationButton = document.querySelector('[data-view="pin"]');
+const pinMessage = document.getElementById('pinMessage');
+const pinStatus = document.getElementById('pinStatus');
+const pinForm = document.getElementById('pinForm');
+const newPinBoxes = document.getElementById('newPinBoxes');
+const confirmPinBoxes = document.getElementById('confirmPinBoxes');
+const newPinEntry = newPinBoxes ? SmartVetPinBoxes.init(newPinBoxes) : null;
+const confirmPinEntry = confirmPinBoxes ? SmartVetPinBoxes.init(confirmPinBoxes) : null;
+const pinFormMessage = document.getElementById('pinFormMessage');
+const savePinButton = document.getElementById('savePinButton');
+const removePinButton = document.getElementById('removePinButton');
+const forgotPinButton = document.getElementById('forgotPinButton');
+const forgotPinPanel = document.getElementById('forgotPinPanel');
+const forgotPinForm = document.getElementById('forgotPinForm');
+const forgotPinEmail = document.getElementById('forgotPinEmail');
+const forgotPinPassword = document.getElementById('forgotPinPassword');
+const forgotPinNewBoxes = document.getElementById('forgotPinNewBoxes');
+const forgotPinConfirmBoxes = document.getElementById('forgotPinConfirmBoxes');
+const forgotPinNew = forgotPinNewBoxes ? SmartVetPinBoxes.init(forgotPinNewBoxes) : null;
+const forgotPinConfirm = forgotPinConfirmBoxes
+    ? SmartVetPinBoxes.init(forgotPinConfirmBoxes)
+    : null;
+const forgotPinMessage = document.getElementById('forgotPinMessage');
+const resetPinButton = document.getElementById('resetPinButton');
+const cancelForgotPinButton = document.getElementById('cancelForgotPinButton');
+
+function updatePinSetupBanner(hasPin) {
+    if (!pinSetupBanner) return;
+
+    let dismissed = false;
+
+    try {
+        dismissed = localStorage.getItem(PIN_BANNER_KEY) === 'true';
+    } catch (error) {
+        dismissed = false;
+    }
+
+    pinSetupBanner.hidden = Boolean(hasPin) || dismissed;
+}
+
+function dismissPinSetupBanner() {
+    try {
+        localStorage.setItem(PIN_BANNER_KEY, 'true');
+    } catch (error) {
+        // Storage can be unavailable in private browsing mode.
+    }
+
+    if (pinSetupBanner) {
+        pinSetupBanner.hidden = true;
+    }
+}
+
+if (setupPinButton) {
+    setupPinButton.addEventListener('click', () => {
+        dismissPinSetupBanner();
+        switchView('pin');
+        loadPinSettings();
+    });
+}
+
+if (dismissPinBanner) {
+    dismissPinBanner.addEventListener('click', dismissPinSetupBanner);
+}
+
+function setPinStatus(hasPin, pinSetAt) {
+    if (pinStatus) {
+        const when = pinSetAt ? new Date(pinSetAt) : null;
+
+        if (hasPin) {
+            pinStatus.textContent = when && !Number.isNaN(when.getTime())
+                ? `PIN is set · saved ${when.toLocaleDateString()}`
+                : 'PIN is set.';
+            pinStatus.classList.add('is-set');
+        } else {
+            pinStatus.textContent = 'No PIN is set. Add one to unlock this app faster.';
+            pinStatus.classList.remove('is-set');
+        }
+    }
+
+    if (removePinButton) {
+        removePinButton.hidden = !hasPin;
+    }
+
+    disarmPinRemoval();
+}
+
+async function loadPinSettings() {
+    if (!pinForm) return;
+
+    try {
+        const data = await apiRequest('/api/owner/profile');
+        const user = data.user || {};
+
+        ownerEmail = user.email || ownerEmail;
+
+        if (forgotPinEmail && user.email) {
+            forgotPinEmail.value = user.email;
+        }
+
+        setPinStatus(Boolean(user.hasPin), user.pinSetAt);
+    } catch (error) {
+        if (pinMessage) {
+            showMessage(pinMessage, error.message || 'Unable to load your PIN settings.', 'error');
+        }
+    }
+}
+
+if (pinNavigationButton) {
+    pinNavigationButton.addEventListener('click', loadPinSettings);
+}
+
+if (pinForm) {
+    pinForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showMessage(pinFormMessage, '');
+
+        const pin = newPinEntry ? newPinEntry.getValue() : '';
+        const confirmPin = confirmPinEntry ? confirmPinEntry.getValue() : '';
+
+        if (!PIN_PATTERN.test(pin)) {
+            showMessage(pinFormMessage, 'Your PIN must be exactly 6 digits.', 'error');
+            return;
+        }
+
+        if (pin !== confirmPin) {
+            showMessage(pinFormMessage, 'The PINs do not match.', 'error');
+            return;
+        }
+
+        savePinButton.disabled = true;
+        const originalLabel = savePinButton.textContent;
+        savePinButton.textContent = 'Saving...';
+
+        try {
+            await apiRequest('/api/owner/pin', {
+                method: 'POST',
+                body: JSON.stringify({ pin })
+            });
+
+            const storedUser = SmartVetSession.getUser() || {};
+            const accountEmail = ownerEmail || storedUser.email || '';
+
+            if (accountEmail) {
+                SmartVetSession.savePinAccount({
+                    email: accountEmail,
+                    fullName: storedUser.fullName || ''
+                });
+            }
+
+            pinForm.reset();
+            if (newPinEntry) newPinEntry.clear();
+            if (confirmPinEntry) confirmPinEntry.clear();
+            setPinStatus(true, new Date().toISOString());
+            updatePinSetupBanner(true);
+            showMessage(
+                pinFormMessage,
+                'PIN saved. Use it to unlock the app next time.',
+                'success'
+            );
+        } catch (error) {
+            showMessage(pinFormMessage, error.message || 'Unable to save your PIN.', 'error');
+        } finally {
+            savePinButton.disabled = false;
+            savePinButton.textContent = originalLabel;
+        }
+    });
+}
+
+function disarmPinRemoval() {
+    pinRemoveArmed = false;
+
+    if (pinRemoveTimer) {
+        window.clearTimeout(pinRemoveTimer);
+        pinRemoveTimer = null;
+    }
+
+    if (removePinButton) {
+        removePinButton.textContent = 'Remove PIN';
+        removePinButton.setAttribute('aria-pressed', 'false');
+    }
+}
+
+if (removePinButton) {
+    removePinButton.addEventListener('click', async () => {
+        if (!pinRemoveArmed) {
+            pinRemoveArmed = true;
+            removePinButton.textContent = 'Click again to confirm';
+            removePinButton.setAttribute('aria-pressed', 'true');
+            pinRemoveTimer = window.setTimeout(disarmPinRemoval, 4000);
+            return;
+        }
+
+        disarmPinRemoval();
+        removePinButton.disabled = true;
+
+        try {
+            await apiRequest('/api/owner/pin', { method: 'DELETE' });
+
+            SmartVetSession.clearPinAccount();
+            setPinStatus(false);
+            updatePinSetupBanner(false);
+            showMessage(
+                pinFormMessage,
+                'PIN removed. Sign in with your email and password.',
+                'success'
+            );
+        } catch (error) {
+            showMessage(pinFormMessage, error.message || 'Unable to remove your PIN.', 'error');
+        } finally {
+            removePinButton.disabled = false;
+        }
+    });
+}
+
+if (forgotPinButton) {
+    forgotPinButton.addEventListener('click', () => {
+        showMessage(forgotPinMessage, '');
+        forgotPinForm.reset();
+
+        // reset() clears the prefilled account email, so put it back.
+        if (forgotPinEmail) {
+            forgotPinEmail.value = ownerEmail || '';
+        }
+
+        if (forgotPinNew) forgotPinNew.clear();
+        if (forgotPinConfirm) forgotPinConfirm.clear();
+
+        forgotPinPanel.hidden = !forgotPinPanel.hidden;
+
+        if (!forgotPinPanel.hidden) {
+            forgotPinPassword.focus();
+        }
+    });
+}
+
+if (cancelForgotPinButton) {
+    cancelForgotPinButton.addEventListener('click', () => {
+        forgotPinPanel.hidden = true;
+        forgotPinForm.reset();
+        if (forgotPinNew) forgotPinNew.clear();
+        if (forgotPinConfirm) forgotPinConfirm.clear();
+        showMessage(forgotPinMessage, '');
+    });
+}
+
+if (forgotPinForm) {
+    forgotPinForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showMessage(forgotPinMessage, '');
+
+        const email = forgotPinEmail.value.trim();
+        const password = forgotPinPassword.value;
+        const pin = forgotPinNew ? forgotPinNew.getValue() : '';
+        const confirmPin = forgotPinConfirm ? forgotPinConfirm.getValue() : '';
+
+        if (!PIN_PATTERN.test(pin)) {
+            showMessage(forgotPinMessage, 'Your PIN must be exactly 6 digits.', 'error');
+            return;
+        }
+
+        if (pin !== confirmPin) {
+            showMessage(forgotPinMessage, 'The PINs do not match.', 'error');
+            return;
+        }
+
+        resetPinButton.disabled = true;
+        const originalLabel = resetPinButton.textContent;
+        resetPinButton.textContent = 'Resetting...';
+
+        try {
+            // Public endpoint: a wrong password must not end the current session.
+            const response = await fetch('/api/auth/pin/reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json'
+                },
+                body: JSON.stringify({ email, password, pin })
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok || data.success === false) {
+                throw new Error(data.message || 'Unable to reset your PIN.');
+            }
+
+            if (data.user && data.user.email) {
+                SmartVetSession.savePinAccount(data.user);
+                ownerEmail = data.user.email;
+            }
+
+            forgotPinPanel.hidden = true;
+            forgotPinForm.reset();
+            if (forgotPinNew) forgotPinNew.clear();
+            if (forgotPinConfirm) forgotPinConfirm.clear();
+            setPinStatus(true, new Date().toISOString());
+            updatePinSetupBanner(true);
+            showMessage(pinFormMessage, 'Your PIN has been reset.', 'success');
+        } catch (error) {
+            showMessage(forgotPinMessage, error.message || 'Unable to reset your PIN.', 'error');
+        } finally {
+            resetPinButton.disabled = false;
+            resetPinButton.textContent = originalLabel;
+        }
+    });
+}
 
 verifyOwner();
