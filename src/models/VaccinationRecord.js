@@ -1,5 +1,6 @@
 
 const mongoose = require('mongoose');
+const { clinicDateString } = require('../utils/clinicDate');
 
 const vaccinationRecordSchema = new mongoose.Schema(
     {
@@ -32,7 +33,15 @@ const vaccinationRecordSchema = new mongoose.Schema(
             required: [true, 'Administration date is required.'],
             validate: {
                 validator: function (value) {
-                    return value <= new Date();
+                    if (!value) {
+                        return true;
+                    }
+
+                    // Compare calendar dates in the clinic timezone, not
+                    // instants: the stored value is midnight UTC of the
+                    // entered date, which is still "in the future" for the
+                    // rest of that UTC day.
+                    return clinicDateString(value) <= clinicDateString();
                 },
                 message: 'Administration date cannot be in the future.'
             }

@@ -1,5 +1,6 @@
 
 const mongoose = require('mongoose');
+const { clinicDateString } = require('../utils/clinicDate');
 
 const petSchema = new mongoose.Schema(
     {
@@ -55,7 +56,11 @@ const petSchema = new mongoose.Schema(
             default: undefined,
             validate: {
                 validator: function (value) {
-                    return !value || value <= new Date();
+                    if (!value) {
+                        return true;
+                    }
+
+                    return clinicDateString(value) <= clinicDateString();
                 },
                 message: 'Date of birth cannot be in the future.'
             }

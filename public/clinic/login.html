@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartVet veterinary staff sign in">
+    <title>Veterinary Sign In | SmartVet</title>
+
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/login.css">
+
+    <script src="/js/session.js" defer></script>
+    <script src="/js/clinic-login.js" defer></script>
+</head>
+<body class="login-body">
+    <main class="login-wrapper">
+        <div class="login-card">
+
+            <section class="login-form-side">
+                <div class="brand-pill">
+                    <span class="brand-pill-text">🐾 SmartVet</span>
+                </div>
+
+                <div class="form-header">
+                    <h1>Veterinary sign in</h1>
+                    <p>Sign in with your veterinary staff account to open the clinic workspace.</p>
+                    <p class="form-header-note">Veterinary staff accounts only</p>
+                </div>
+
+                <form id="clinicLoginForm">
+                    <div class="form-field">
+                        <label for="clinicEmail">Email</label>
+                        <input
+                            id="clinicEmail"
+                            name="email"
+                            type="email"
+                            placeholder="Enter your email"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-field">
+                        <label for="clinicPassword">Password</label>
+                        <div class="password-field">
+                            <input
+                                id="clinicPassword"
+                                name="password"
+                                type="password"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                required
+                            >
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                data-target="clinicPassword"
+                                aria-label="Show password"
+                                aria-pressed="false"
+                            >
+                                <svg class="icon-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="icon-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button class="primary-button submit-btn" id="clinicLoginButton" type="submit">
+                        Sign in
+                    </button>
+
+                    <p id="clinicLoginMessage" class="form-message" role="status" aria-live="polite"></p>
+                </form>
+
+                <div class="form-footer">
+                    <p>Pet owner?
+                        <a class="text-button" href="/login.html">Go to the owner portal sign in</a>
+                    </p>
+                    <p>Back to <a class="back-link" href="/">SmartVet Home</a></p>
+                </div>
+            </section>
+
+            <section class="login-hero-side">
+                <div class="hero-image-wrapper">
+                    <img
+                        src="/images/VetCare.jpg"
+                        alt="SmartVet veterinary care"
+                        class="dog-hero-img"
+                    >
+                </div>
+            </section>
+
+        </div>
+    </main>
+</body>
+</html>

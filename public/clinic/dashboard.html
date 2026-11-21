@@ -397,83 +397,81 @@
                 </div>
             </section>
         </section>
-        <!-- QR SCANNER OWNER DETAILS (UIVERSE REDESIGN) -->
-        <dialog id="qrOwnerDetailsDialog" class="qr-owner-dialog">
-            <div class="uiverse-card">
-                <button type="button" class="uiverse-card-close" data-close-dialog="qrOwnerDetailsDialog" aria-label="Close owner details">×</button>
+        <!-- QR SCANNER OWNER DETAILS -->
+        <dialog id="qrOwnerDetailsDialog" class="qr-owner-dialog" aria-labelledby="qrOwnerName">
+            <section class="qr-owner-card">
+                <button type="button" class="qr-owner-close" data-close-dialog="qrOwnerDetailsDialog" aria-label="Close owner details">×</button>
 
-                <!-- Curved Header Background -->
-                <div class="uiverse-card__img">
-                    <svg viewBox="0 0 500 150" preserveAspectRatio="none">
-                        <path d="M0,0 L500,0 L500,100 Q250,180 0,100 Z" fill="#2389e0"></path>
-                    </svg>
-                </div>
+                <header class="qr-owner-header">
+                    <div class="qr-owner-avatar">
+                        <img id="qrOwnerPhoto" alt="Pet owner profile photo" hidden>
+                        <span id="qrOwnerPhotoPlaceholder" class="qr-owner-photo-placeholder" aria-hidden="true">SV</span>
+                    </div>
+                    <div class="qr-owner-identity">
+                        <p class="qr-owner-eyebrow">PET OWNER</p>
+                        <h2 id="qrOwnerName">Owner Name</h2>
+                        <p class="qr-owner-subtitle">Personal information</p>
+                    </div>
+                </header>
 
-                <!-- Overlapping Avatar -->
-                <div class="uiverse-card__avatar">
-                    <img id="qrOwnerPhoto" alt="Pet owner profile photo" hidden>
-                    <span id="qrOwnerPhotoPlaceholder" class="uiverse-avatar-placeholder" aria-hidden="true">SV</span>
-                </div>
+                <section class="qr-owner-information" aria-label="Owner personal information">
+                    <div class="qr-owner-details">
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Email</span>
+                            <span class="qr-detail-value" id="qrOwnerEmail">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Phone</span>
+                            <span class="qr-detail-value" id="qrOwnerPhone">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Date of Birth</span>
+                            <span class="qr-detail-value" id="qrOwnerDateOfBirth">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Sex / Gender</span>
+                            <span class="qr-detail-value" id="qrOwnerGender">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Civil Status</span>
+                            <span class="qr-detail-value" id="qrOwnerCivilStatus">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Nationality</span>
+                            <span class="qr-detail-value" id="qrOwnerNationality">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Government ID</span>
+                            <span class="qr-detail-value" id="qrOwnerGovId">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail">
+                            <span class="qr-detail-label">Occupation</span>
+                            <span class="qr-detail-value" id="qrOwnerOccupation">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail qr-owner-detail-wide">
+                            <span class="qr-detail-label">Current Address</span>
+                            <span class="qr-detail-value" id="qrOwnerAddress">Not provided</span>
+                        </div>
+                        <div class="qr-owner-detail qr-owner-detail-wide">
+                            <span class="qr-detail-label">Permanent Address</span>
+                            <span class="qr-detail-value" id="qrOwnerPermanentAddress">Not provided</span>
+                        </div>
+                    </div>
+                </section>
 
-                <div class="uiverse-card__title" id="qrOwnerName">Owner Name</div>
-                <div class="uiverse-card__subtitle">PET OWNER • Personal information</div>
-
-                <!-- Details Grid -->
-                <div class="uiverse-card__details">
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Email</span>
-                        <span class="uiverse-detail-value" id="qrOwnerEmail">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Phone</span>
-                        <span class="uiverse-detail-value" id="qrOwnerPhone">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Date of Birth</span>
-                        <span class="uiverse-detail-value" id="qrOwnerDateOfBirth">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Sex / Gender</span>
-                        <span class="uiverse-detail-value" id="qrOwnerGender">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Civil Status</span>
-                        <span class="uiverse-detail-value" id="qrOwnerCivilStatus">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Nationality</span>
-                        <span class="uiverse-detail-value" id="qrOwnerNationality">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Government ID</span>
-                        <span class="uiverse-detail-value" id="qrOwnerGovId">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item">
-                        <span class="uiverse-detail-label">Occupation</span>
-                        <span class="uiverse-detail-value" id="qrOwnerOccupation">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item uiverse-full-width">
-                        <span class="uiverse-detail-label">Current Address</span>
-                        <span class="uiverse-detail-value" id="qrOwnerAddress">Not provided</span>
-                    </div>
-                    <div class="uiverse-detail-item uiverse-full-width">
-                        <span class="uiverse-detail-label">Permanent Address</span>
-                        <span class="uiverse-detail-value" id="qrOwnerPermanentAddress">Not provided</span>
-                    </div>
-                </div>
-
-                <!-- Footer Buttons -->
-                <div class="uiverse-card__footer">
-                    <button type="button" class="uiverse-btn uiverse-btn-outline" id="qrOwnerMailButton">Email owner</button>
-                    <button type="button" class="uiverse-btn uiverse-btn-solid" data-close-dialog="qrOwnerDetailsDialog">Done</button>
-                </div>
-            </div>
+                <footer class="qr-owner-footer">
+                    <button type="button" class="qr-owner-email-button" id="qrOwnerMailButton">Email owner</button>
+                    <button type="button" class="qr-owner-done-button" data-close-dialog="qrOwnerDetailsDialog">Done</button>
+                </footer>
+            </section>
         </dialog>
 
         <!-- ADD VACCINATION RECORD MODAL -->
         <dialog id="qrVaccinationRecordDialog" class="smartvet-modal">
             <div class="smartvet-modal-header">
-                <div>
+                <span class="smartvet-modal-icon" aria-hidden="true">💉</span>
+
+                <div class="smartvet-modal-title">
                     <p class="page-eyebrow">CLINICAL RECORD</p>
                     <h2>Add Vaccination Record</h2>
                     <p id="qrVaccinationPetName" class="muted">Selected pet: —</p>
@@ -481,15 +479,17 @@
 
                 <button
                     type="button"
-                    class="secondary"
+                    class="secondary smartvet-modal-close"
                     data-close-dialog="qrVaccinationRecordDialog"
                     aria-label="Close vaccination form">
                     Close
                 </button>
             </div>
 
-            <form id="qrVaccinationForm">
-                <div class="form-grid">
+            <div class="smartvet-modal-body">
+                <form id="qrVaccinationForm">
+                    <p class="smartvet-modal-section">Inventory lot (optional)</p>
+                    <div class="form-grid">
                     <div class="form-group full-width">
                         <label for="qrVaccinationInventorySelect">Use inventory lot (optional)</label>
                         <select id="qrVaccinationInventorySelect">
@@ -502,7 +502,10 @@
                         <label for="qrVaccinationInventoryQuantity">Doses used</label>
                         <input id="qrVaccinationInventoryQuantity" type="number" min="1" step="1" value="1" disabled>
                     </div>
+                </div>
 
+                <p class="smartvet-modal-section">Vaccination details</p>
+                <div class="form-grid">
                     <div class="form-group">
                         <label for="qrVaccineName">Vaccine Name *</label>
                         <input
@@ -558,7 +561,7 @@
                             maxlength="100">
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group full-width">
                         <label for="qrVaccinationNotes">Notes</label>
                         <textarea
                             id="qrVaccinationNotes"
@@ -575,19 +578,22 @@
                     role="status"
                     aria-live="polite">
                 </p>
+                </form>
+            </div>
 
-                <div class="form-actions">
-                    <button type="submit" id="qrSaveVaccinationButton">
-                        Save Vaccination
-                    </button>
-                </div>
-            </form>
+            <div class="smartvet-modal-footer">
+                <button type="submit" form="qrVaccinationForm" id="qrSaveVaccinationButton" class="primary">
+                    Save Vaccination
+                </button>
+            </div>
         </dialog>
 
         <!-- VACCINATION HISTORY MODAL -->
-        <dialog id="qrVaccinationHistoryDialog" class="smartvet-modal">
+        <dialog id="qrVaccinationHistoryDialog" class="smartvet-modal smartvet-modal-history">
             <div class="smartvet-modal-header">
-                <div>
+                <span class="smartvet-modal-icon smartvet-modal-icon-history" aria-hidden="true">🗂️</span>
+
+                <div class="smartvet-modal-title">
                     <p class="page-eyebrow">CLINICAL RECORD</p>
                     <h2>Vaccination History</h2>
                     <p id="qrHistoryPetName" class="muted">Selected pet: —</p>
@@ -595,20 +601,23 @@
 
                 <button
                     type="button"
-                    class="secondary"
+                    class="secondary smartvet-modal-close"
                     data-close-dialog="qrVaccinationHistoryDialog"
                     aria-label="Close vaccination history">
                     Close
                 </button>
             </div>
 
-            <div
-                id="qrVaccinationHistoryList"
-                aria-live="polite"
-                aria-busy="false">
-                <p class="muted">
-                    Vaccination history will load when this modal opens.
-                </p>
+            <div class="smartvet-modal-body">
+                <div
+                    id="qrVaccinationHistoryList"
+                    class="qr-vaccination-history-list"
+                    aria-live="polite"
+                    aria-busy="false">
+                    <p class="muted">
+                        Vaccination history will load when this modal opens.
+                    </p>
+                </div>
             </div>
         </dialog>
 

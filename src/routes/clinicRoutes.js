@@ -10,6 +10,7 @@ const VaccinationRecord = require('../models/VaccinationRecord');
 const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
 const VaccineInventory = require('../models/VaccineInventory');
+const { clinicDateString } = require('../utils/clinicDate');
 
 const {
     requireAuth,
@@ -899,11 +900,10 @@ router.post(
             .withMessage('Administration date must use YYYY-MM-DD format.')
             .bail()
             .custom((value) => {
-                const date = new Date(`${value}T00:00:00.000Z`);
-                const today = new Date();
-                today.setUTCHours(0, 0, 0, 0);
-
-                return date <= today;
+                // Compare calendar dates in the clinic timezone. The browser
+                // allows up to its local today, and in UTC+8 the local day is
+                // already tomorrow for part of the UTC day.
+                return value <= clinicDateString();
             })
             .withMessage('Administration date cannot be in the future.'),
 

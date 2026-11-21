@@ -182,7 +182,7 @@ function getToken() {
 
 function logout() {
     SmartVetSession.clear();
-    window.location.replace('/login.html');
+    window.location.replace('/clinic/login.html');
 }
 
 function showMessage(element, message, type = '') {
@@ -226,7 +226,15 @@ async function apiRequest(url, options = {}) {
     }
 
     if (!response.ok || data.success === false) {
-        throw new Error(data.message || `Request failed (${response.status}).`);
+        // Validation failures carry per-field messages; show the first one
+        // instead of the generic summary so the problem is obvious.
+        const fieldError = Array.isArray(data.errors) ? data.errors[0] : null;
+
+        throw new Error(
+            (fieldError && fieldError.message) ||
+                data.message ||
+                `Request failed (${response.status}).`
+        );
     }
 
     return data;
@@ -2756,7 +2764,7 @@ async function loadQrVaccinationHistory() {
 
         if (records.length === 0) {
             const emptyMessage = document.createElement('p');
-            emptyMessage.className = 'muted';
+            emptyMessage.className = 'empty';
             emptyMessage.textContent =
                 'No vaccination records have been entered for this pet yet.';
             qrVaccinationHistoryList.appendChild(emptyMessage);
@@ -2769,52 +2777,48 @@ async function loadQrVaccinationHistory() {
 
             const heading = document.createElement('h3');
             heading.textContent = record.vaccineName || 'Unnamed vaccine';
+            card.appendChild(heading);
 
-            const administered = document.createElement('p');
-            administered.textContent =
-                `Administration date: ${record.administeredDate
-                    ? String(record.administeredDate).slice(0, 10)
-                    : 'Not recorded'}`;
+            const rows = [
+                [
+                    'Administration date',
+                    record.administeredDate
+                        ? String(record.administeredDate).slice(0, 10)
+                        : 'Not recorded'
+                ],
+                [
+                    'Next due date',
+                    record.nextDueDate
+                        ? String(record.nextDueDate).slice(0, 10)
+                        : 'Not specified'
+                ]
+            ];
 
-            const dueDate = document.createElement('p');
-            dueDate.textContent =
-                `Next due date: ${record.nextDueDate
-                    ? String(record.nextDueDate).slice(0, 10)
-                    : 'Not specified'}`;
-
-            card.append(heading, administered, dueDate);
-
-            if (record.batchNumber) {
-                const batch = document.createElement('p');
-                batch.textContent = `Batch number: ${record.batchNumber}`;
-                card.appendChild(batch);
-            }
-
-            if (record.manufacturer) {
-                const manufacturer = document.createElement('p');
-                manufacturer.textContent = `Manufacturer: ${record.manufacturer}`;
-                card.appendChild(manufacturer);
-            }
-
-            if (record.dosage) {
-                const dosage = document.createElement('p');
-                dosage.textContent = `Dosage: ${record.dosage}`;
-                card.appendChild(dosage);
-            }
+            if (record.batchNumber) rows.push(['Batch number', record.batchNumber]);
+            if (record.manufacturer) rows.push(['Manufacturer', record.manufacturer]);
+            if (record.dosage) rows.push(['Dosage', record.dosage]);
 
             if (record.administeredBy?.fullName) {
-                const staff = document.createElement('p');
-                staff.className = 'muted';
-                staff.textContent =
-                    `Recorded by: ${record.administeredBy.fullName}`;
-                card.appendChild(staff);
+                rows.push(['Recorded by', record.administeredBy.fullName]);
             }
 
-            if (record.notes) {
-                const notes = document.createElement('p');
-                notes.textContent = `Notes: ${record.notes}`;
-                card.appendChild(notes);
-            }
+            if (record.notes) rows.push(['Notes', record.notes]);
+
+            rows.forEach(([label, value]) => {
+                const row = document.createElement('div');
+                row.className = 'qr-vaccination-history-row';
+
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'qr-vaccination-history-label';
+                labelSpan.textContent = label;
+
+                const valueSpan = document.createElement('span');
+                valueSpan.className = 'qr-vaccination-history-value';
+                valueSpan.textContent = value;
+
+                row.append(labelSpan, valueSpan);
+                card.appendChild(row);
+            });
 
             qrVaccinationHistoryList.appendChild(card);
         });
