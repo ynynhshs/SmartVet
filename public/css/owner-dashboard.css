@@ -966,62 +966,6 @@ button:disabled {
     }
 }
 
-/* SmartVet theme toggle */
-.sidebar-theme-area {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(130, 150, 175, 0.22);
-}
-
-.sidebar-theme-toggle {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 11px 12px;
-    border: 1px solid rgba(130, 150, 175, 0.25);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.45);
-    color: var(--clay-text);
-    font: inherit;
-    font-size: 0.88rem;
-    font-weight: 700;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.sidebar-theme-toggle:hover {
-    background: rgba(36, 140, 230, 0.12);
-    border-color: var(--clay-blue);
-}
-
-.theme-toggle-icon {
-    display: inline-flex;
-    flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    background: rgba(36, 140, 230, 0.12);
-    color: var(--clay-blue);
-    font-size: 1.2rem;
-}
-
-.theme-toggle-label {
-    flex: 1;
-}
-
-.owner-shell.sidebar-collapsed .sidebar-theme-toggle {
-    justify-content: center;
-    padding: 8px 4px;
-}
-
-.owner-shell.sidebar-collapsed .theme-toggle-label {
-    display: none;
-}
-
 /* SmartVet pet-owner dark theme */
 body[data-theme="dark"] {
     color-scheme: dark;
@@ -1100,7 +1044,6 @@ body[data-theme="dark"] a {
 }
 
 body[data-theme="dark"] .sidebar-toggle,
-body[data-theme="dark"] .sidebar-theme-toggle,
 body[data-theme="dark"] .mobile-menu-toggle,
 body[data-theme="dark"] .mobile-sidebar-close {
     background-color: #203149;
@@ -1108,21 +1051,15 @@ body[data-theme="dark"] .mobile-sidebar-close {
     border-color: #40536a;
 }
 
-body[data-theme="dark"] .sidebar-theme-toggle:hover,
 body[data-theme="dark"] .sidebar-toggle:hover,
 body[data-theme="dark"] .mobile-menu-toggle:hover,
 body[data-theme="dark"] .mobile-sidebar-close:hover {
     background-color: #2a405b;
 }
 
-body[data-theme="dark"] .sidebar-theme-area {
-    border-color: #34485f;
-}
-
 @media (prefers-reduced-motion: reduce) {
     .owner-shell,
-    .sidebar-toggle,
-    .sidebar-theme-toggle {
+    .sidebar-toggle {
         transition: none;
     }
 }
@@ -1465,11 +1402,6 @@ body.theme-transitioning * {
         grid-auto-flow: row;
         align-content: start;
         overflow-y: auto;
-    }
-
-    .sidebar-theme-area {
-        margin-top: auto;
-        padding-bottom: 4px;
     }
 
     header.site-header.owner-header {
@@ -2692,8 +2624,7 @@ body[data-theme="dark"] .setup-banner-close:hover {
    ========================================== */
 
 @media (max-width: 760px) {
-    .theme-options,
-    .settings-form-grid {
+    .theme-options {
         grid-template-columns: minmax(0, 1fr);
     }
 

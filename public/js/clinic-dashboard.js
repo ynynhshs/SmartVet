@@ -13,8 +13,6 @@ const registeredPetsCount = document.getElementById('registeredPetsCount');
 const overdueVaccineCount = document.getElementById('overdueVaccineCount');
 const dueSoonVaccineCount = document.getElementById('dueSoonVaccineCount');
 
-const sidebarPendingCount = document.getElementById('sidebarPendingCount');
-
 const approvalResultContainer = document.getElementById(
     'approvalResultContainer'
 );
@@ -46,15 +44,6 @@ const copyDeviceTokenButton = document.getElementById('copyDeviceTokenButton');
 
 const refreshDevicesButton = document.getElementById('refreshDevicesButton');
 const devicesList = document.getElementById('devicesList');
-const vaccineInventoryForm = document.getElementById('vaccineInventoryForm');
-const vaccineInventoryList = document.getElementById('vaccineInventoryList');
-const vaccineInventoryMessage = document.getElementById('vaccineInventoryMessage');
-const saveVaccineInventoryButton = document.getElementById('saveVaccineInventoryButton');
-const refreshVaccineInventoryButton = document.getElementById('refreshVaccineInventoryButton');
-const vaccinationInventorySelect = document.getElementById('vaccinationInventorySelect');
-const vaccinationInventoryQuantity = document.getElementById('vaccinationInventoryQuantity');
-const qrVaccinationInventorySelect = document.getElementById('qrVaccinationInventorySelect');
-const qrVaccinationInventoryQuantity = document.getElementById('qrVaccinationInventoryQuantity');
 
 const clinicReportForm = document.getElementById('clinicReportForm');
 const clinicReportType = document.getElementById('clinicReportType');
@@ -73,7 +62,6 @@ const qrScanAnotherButton = document.getElementById('qrScanAnotherButton');
 
 const qrPetProfilePanel = document.getElementById('qrPetProfilePanel');
 const qrPetPhoto = document.getElementById('qrPetPhoto');
-const qrPetPhotoPlaceholder = document.getElementById('qrPetPhotoPlaceholder');
 const qrPetName = document.getElementById('qrPetName');
 const qrPetCode = document.getElementById('qrPetCode');
 const qrPetSpecies = document.getElementById('qrPetSpecies');
@@ -169,7 +157,6 @@ const views = {
     feedingEvents: document.getElementById('feedingEventsSection'),
     qrScanner: document.getElementById('qrScannerSection'),
     devices: document.getElementById('devicesSection'),
-    inventory: document.getElementById('inventorySection'),
     reports: document.getElementById('reportsSection'),
     userManagement: document.getElementById('userManagementSection'),
     settings: document.getElementById('settingsSection'),
@@ -180,15 +167,18 @@ const views = {
 let dashboardReady = false;
 let approvedPets = [];
 
+/** Returns the stored SmartVet session token, or an empty value when signed out. */
 function getToken() {
     return SmartVetSession.getToken();
 }
 
+/** Clears the stored session and redirects the browser to the clinic login page. */
 function logout() {
     SmartVetSession.clear();
     window.location.replace('/clinic/login.html');
 }
 
+/** Writes a message into an element and applies a message-type class; no-op when the element is missing. */
 function showMessage(element, message, type = '') {
     if (!element) return;
 
@@ -196,6 +186,7 @@ function showMessage(element, message, type = '') {
     element.className = `message ${type}`.trim();
 }
 
+/** Performs an authenticated fetch against the clinic API, attaches the bearer token, logs out on a 401, and throws the first field error or server message on failure. */
 async function apiRequest(url, options = {}) {
     const token = getToken();
 
@@ -244,6 +235,7 @@ async function apiRequest(url, options = {}) {
     return data;
 }
 
+/** Creates an element with the given tag and text, optionally assigns a class, appends it to parent, and returns it. */
 function addText(parent, tag, text, className = '') {
     const element = document.createElement(tag);
     element.textContent = text;
@@ -256,6 +248,7 @@ function addText(parent, tag, text, className = '') {
     return element;
 }
 
+/** Creates a type="button" button with a label, class, and click handler, and returns it. */
 function createButton(label, className, onClick) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -265,6 +258,7 @@ function createButton(label, className, onClick) {
     return button;
 }
 
+/** Formats a date value for display, returning "Not provided" for empty values and "Not available" for invalid dates. */
 function formatDate(value) {
     if (!value) return 'Not provided';
 
@@ -278,6 +272,7 @@ function formatDate(value) {
     
 }
 
+/** Formats a timestamp in Asia/Manila time, returning "Not recorded" for empty values and "Not available" for invalid dates. */
 function formatDateTime(value) {
     if (!value) return 'Not recorded';
 
@@ -298,6 +293,7 @@ function formatDateTime(value) {
     });
 }
 
+/** Returns a Date as a local YYYY-MM-DD string, defaulting to today. */
 function localDateString(date = new Date()) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -306,6 +302,7 @@ function localDateString(date = new Date()) {
     return `${year}-${month}-${day}`;
 }
 
+/** Rebuilds the device form's pet dropdown from approvedPets, preserving the previous selection when it still exists. */
 function populateDevicePetOptions() {
     if (!devicePetSelect) return;
 
@@ -366,7 +363,6 @@ function switchView(viewName) {
     // Start the scanner when its workspace opens.
     // Stop the camera when the user leaves the workspace.
     if (viewName === 'qrScanner') {
-        loadVaccineInventory();
         startQrScanner();
     } else {
         stopQrScanner();
@@ -377,7 +373,6 @@ function switchView(viewName) {
     }
 
     if (viewName === 'vaccinations') {
-        loadVaccineInventory();
         if (approvedPets.length === 0) {
             loadApprovedPets();
         } else {
@@ -394,10 +389,6 @@ if (viewName === 'devices') {
     populateDevicePetOptions();
     loadDevices();
 }
-
-    if (viewName === 'inventory') {
-        loadVaccineInventory();
-    }
 
     if (viewName === 'reports') {
         loadClinicReport();
@@ -439,10 +430,6 @@ quickActionButtons.forEach((button) => {
 function updatePendingCount(count) {
     if (pendingCount) {
         pendingCount.textContent = String(count);
-    }
-
-    if (sidebarPendingCount) {
-        sidebarPendingCount.textContent = String(count);
     }
 }
 
@@ -1004,12 +991,6 @@ vaccinationForm.addEventListener('submit', async (event) => {
         notes: document.getElementById('vaccinationNotes').value.trim()
     };
 
-    if (vaccinationInventorySelect.value) {
-        payload.inventoryItemId = vaccinationInventorySelect.value;
-        payload.inventoryQuantityUsed =
-            Number(vaccinationInventoryQuantity.value);
-    }
-
     if (nextDueDate) {
         payload.nextDueDate = nextDueDate;
     }
@@ -1033,14 +1014,11 @@ vaccinationForm.addEventListener('submit', async (event) => {
         );
 
         vaccinationForm.reset();
-        vaccinationInventoryQuantity.disabled = true;
-        vaccinationInventoryQuantity.value = '1';
 
         administeredDateInput.max = localDateString();
         nextDueDateInput.min = '';
 
         await loadVaccinationHistory(petId);
-        await loadVaccineInventory();
     } catch (error) {
         showMessage(
             vaccinationMessage,
@@ -1673,231 +1651,6 @@ async function loadDevices() {
 }
 
 let clinicReportData = null;
-let vaccineInventoryLots = [];
-
-function isInventoryLotUsable(item) {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    return item.stockQuantity > 0 && new Date(item.expiryDate) >= today;
-}
-
-function updateVaccinationInventoryOptions() {
-    [vaccinationInventorySelect, qrVaccinationInventorySelect].forEach((select) => {
-        if (!select) return;
-
-        const selectedValue = select.value;
-        select.replaceChildren();
-        const noInventory = document.createElement('option');
-        noInventory.value = '';
-        noInventory.textContent = 'Record without inventory tracking';
-        select.appendChild(noInventory);
-
-        vaccineInventoryLots.filter(isInventoryLotUsable).forEach((item) => {
-            const option = document.createElement('option');
-            option.value = item.id;
-            option.textContent =
-                `${item.vaccineName} · ${item.batchNumber} · ${item.stockQuantity} dose(s)`;
-            select.appendChild(option);
-        });
-
-        if (vaccineInventoryLots.some((item) =>
-            item.id === selectedValue && isInventoryLotUsable(item)
-        )) {
-            select.value = selectedValue;
-        }
-    });
-}
-
-function setVaccinationInventorySelection(select, quantityInput, formPrefix) {
-    if (!select || !quantityInput) return;
-    const selected = vaccineInventoryLots.find((item) => item.id === select.value);
-    quantityInput.disabled = !selected;
-    const vaccineNameInput = document.getElementById(
-        formPrefix ? `${formPrefix}VaccineName` : 'vaccineName'
-    );
-    const batchInput = document.getElementById(
-        formPrefix ? `${formPrefix}BatchNumber` : 'batchNumber'
-    );
-    const manufacturerInput = document.getElementById(
-        formPrefix ? `${formPrefix}Manufacturer` : 'manufacturer'
-    );
-    if (!selected) {
-        const previous = vaccineInventoryLots.find(
-            (item) => item.id === select.dataset.inventoryItemId
-        );
-        if (previous) {
-            if (vaccineNameInput?.value === previous.vaccineName) vaccineNameInput.value = '';
-            if (batchInput?.value === previous.batchNumber) batchInput.value = '';
-            if (manufacturerInput?.value === previous.manufacturer) manufacturerInput.value = '';
-        }
-        select.dataset.inventoryItemId = '';
-        return;
-    }
-
-    if (vaccineNameInput) vaccineNameInput.value = selected.vaccineName;
-    if (batchInput) batchInput.value = selected.batchNumber;
-    if (manufacturerInput) manufacturerInput.value = selected.manufacturer;
-    select.dataset.inventoryItemId = selected.id;
-}
-
-function renderVaccineInventory() {
-    if (!vaccineInventoryList) return;
-    vaccineInventoryList.replaceChildren();
-
-    if (vaccineInventoryLots.length === 0) {
-        addText(vaccineInventoryList, 'p', 'No vaccine lots are recorded yet.', 'muted');
-        return;
-    }
-
-    vaccineInventoryLots.forEach((item) => {
-        const card = document.createElement('article');
-        card.className = 'inventory-card';
-        const heading = document.createElement('div');
-        heading.className = 'inventory-card-heading';
-        addText(heading, 'h3', item.vaccineName);
-        const badge = document.createElement('span');
-        badge.className = `inventory-status ${item.stockStatus.replace(/_/g, '-')}`;
-        badge.textContent = item.stockStatus.replace(/_/g, ' ');
-        heading.appendChild(badge);
-
-        addText(card, 'div', `${item.manufacturer} · Lot ${item.batchNumber}`, 'muted');
-        addText(card, 'p', `Expiry: ${formatDate(item.expiryDate)}`);
-        addText(card, 'p', `Stock: ${item.stockQuantity} dose(s) · Low-stock alert: ${item.lowStockThreshold}`);
-        if (item.notes) addText(card, 'p', item.notes, 'muted');
-
-        const adjustForm = document.createElement('form');
-        adjustForm.className = 'inventory-adjust-form';
-        const amount = document.createElement('input');
-        amount.type = 'number';
-        amount.step = '1';
-        amount.required = true;
-        amount.setAttribute('aria-label', `Dose adjustment for ${item.vaccineName}`);
-        amount.placeholder = '+ received / - removed';
-        const reason = document.createElement('input');
-        reason.type = 'text';
-        reason.maxLength = 250;
-        reason.required = true;
-        reason.setAttribute('aria-label', `Adjustment reason for ${item.vaccineName}`);
-        reason.placeholder = 'Reason';
-        const adjustButton = document.createElement('button');
-        adjustButton.type = 'submit';
-        adjustButton.className = 'secondary';
-        adjustButton.textContent = 'Adjust stock';
-        adjustForm.append(amount, reason, adjustButton);
-        adjustForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const quantityChange = Number(amount.value);
-            if (!Number.isInteger(quantityChange) || quantityChange === 0) {
-                showMessage(vaccineInventoryMessage, 'Enter a non-zero whole number of doses.', 'error');
-                return;
-            }
-
-            adjustButton.disabled = true;
-            try {
-                await apiRequest(
-                    `/api/clinic/vaccine-inventory/${encodeURIComponent(item.id)}/adjust`,
-                    {
-                        method: 'PATCH',
-                        body: JSON.stringify({
-                            quantityChange,
-                            reason: reason.value.trim()
-                        })
-                    }
-                );
-                showMessage(vaccineInventoryMessage, 'Inventory adjustment saved.', 'success');
-                await loadVaccineInventory();
-            } catch (error) {
-                showMessage(vaccineInventoryMessage, error.message, 'error');
-                adjustButton.disabled = false;
-            }
-        });
-        card.appendChild(adjustForm);
-
-        if (item.movements.length) {
-            const history = document.createElement('details');
-            const summary = document.createElement('summary');
-            summary.textContent = 'Recent stock movements';
-            history.appendChild(summary);
-            item.movements.forEach((movement) => {
-                const line = document.createElement('p');
-                const sign = movement.quantityChange > 0 ? '+' : '';
-                line.textContent =
-                    `${formatDate(movement.createdAt)} · ${movement.type.replace(/_/g, ' ')} · ${sign}${movement.quantityChange} dose(s) · ${movement.reason || 'No reason recorded'}`;
-                history.appendChild(line);
-            });
-            card.appendChild(history);
-        }
-        vaccineInventoryList.appendChild(card);
-    });
-}
-
-async function loadVaccineInventory() {
-    if (!vaccineInventoryList) return;
-    vaccineInventoryList.setAttribute('aria-busy', 'true');
-    try {
-        const data = await apiRequest('/api/clinic/vaccine-inventory');
-        vaccineInventoryLots = Array.isArray(data.inventory) ? data.inventory : [];
-        renderVaccineInventory();
-        updateVaccinationInventoryOptions();
-    } catch (error) {
-        vaccineInventoryList.replaceChildren();
-        addText(
-            vaccineInventoryList,
-            'p',
-            error.message || 'Unable to load vaccine inventory.',
-            'error'
-        );
-    } finally {
-        vaccineInventoryList.setAttribute('aria-busy', 'false');
-    }
-}
-
-if (vaccineInventoryForm) {
-    vaccineInventoryForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        saveVaccineInventoryButton.disabled = true;
-        const payload = Object.fromEntries(new FormData(vaccineInventoryForm).entries());
-
-        try {
-            const data = await apiRequest('/api/clinic/vaccine-inventory', {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-            vaccineInventoryForm.reset();
-            document.getElementById('inventoryLowStockThreshold').value = '5';
-            showMessage(vaccineInventoryMessage, data.message, 'success');
-            await loadVaccineInventory();
-        } catch (error) {
-            showMessage(vaccineInventoryMessage, error.message, 'error');
-        } finally {
-            saveVaccineInventoryButton.disabled = false;
-        }
-    });
-}
-
-if (refreshVaccineInventoryButton) {
-    refreshVaccineInventoryButton.addEventListener('click', loadVaccineInventory);
-}
-
-if (vaccinationInventorySelect) {
-    vaccinationInventorySelect.addEventListener('change', () =>
-        setVaccinationInventorySelection(
-            vaccinationInventorySelect,
-            vaccinationInventoryQuantity,
-            ''
-        )
-    );
-}
-
-if (qrVaccinationInventorySelect) {
-    qrVaccinationInventorySelect.addEventListener('change', () =>
-        setVaccinationInventorySelection(
-            qrVaccinationInventorySelect,
-            qrVaccinationInventoryQuantity,
-            'qr'
-        )
-    );
-}
 
 function formatReportCell(value) {
     if (value === null || value === undefined || value === '') return '—';
@@ -1985,20 +1738,6 @@ if (clinicReportForm) {
         event.preventDefault();
         loadClinicReport();
     });
-}
-
-if (clinicReportType) {
-    const updateReportDateFilters = () => {
-        const isInventoryReport = clinicReportType.value === 'inventory';
-        clinicReportFrom.disabled = isInventoryReport;
-        clinicReportTo.disabled = isInventoryReport;
-        if (isInventoryReport) {
-            clinicReportFrom.value = '';
-            clinicReportTo.value = '';
-        }
-    };
-    clinicReportType.addEventListener('change', updateReportDateFilters);
-    updateReportDateFilters();
 }
 
 if (exportClinicReportButton) {
@@ -2299,10 +2038,6 @@ async function startQrScanner() {
         qrPetPhoto.hidden = true;
     }
 
-    if (qrPetPhotoPlaceholder) {
-        qrPetPhotoPlaceholder.hidden = false;
-    }
-
     if (qrScannerStatus) {
         showMessage(qrScannerStatus, 'Requesting camera access...');
     }
@@ -2496,9 +2231,6 @@ function displayScannedPet(pet) {
     } else {
         qrPetPhoto.removeAttribute('src');
         qrPetPhoto.hidden = true;
-        if (qrPetPhotoPlaceholder) {
-            qrPetPhotoPlaceholder.hidden = false;
-        }
     }
 }
 
@@ -2702,12 +2434,6 @@ if (qrVaccinationForm) {
                 document.getElementById('qrVaccinationNotes').value.trim()
         };
 
-        if (qrVaccinationInventorySelect.value) {
-            payload.inventoryItemId = qrVaccinationInventorySelect.value;
-            payload.inventoryQuantityUsed =
-                Number(qrVaccinationInventoryQuantity.value);
-        }
-
         if (nextDueDate) {
             payload.nextDueDate = nextDueDate;
         }
@@ -2731,9 +2457,6 @@ if (qrVaccinationForm) {
             );
 
             qrVaccinationForm.reset();
-            qrVaccinationInventoryQuantity.disabled = true;
-            qrVaccinationInventoryQuantity.value = '1';
-            await loadVaccineInventory();
 
             const administeredInput =
                 document.getElementById('qrAdministeredDate');
@@ -2923,15 +2646,9 @@ async function loadScannedPetPhoto(petId) {
         qrPetPhotoObjectUrl = URL.createObjectURL(imageBlob);
         qrPetPhoto.src = qrPetPhotoObjectUrl;
         qrPetPhoto.hidden = false;
-        if (qrPetPhotoPlaceholder) {
-            qrPetPhotoPlaceholder.hidden = true;
-        }
     } catch {
         qrPetPhoto.removeAttribute('src');
         qrPetPhoto.hidden = true;
-        if (qrPetPhotoPlaceholder) {
-            qrPetPhotoPlaceholder.hidden = false;
-        }
     }
 }
 
@@ -3205,7 +2922,7 @@ const applyAuditFiltersButton = document.getElementById('applyAuditFiltersButton
 const currentAdministratorId = SmartVetSession.getUser()?.id || '';
 
 const ADMIN_ROLE_LABELS = {
-    veterinarian: 'Veterinarian (Administrator)',
+    veterinarian: 'Administrator',
     veterinary_staff: 'Veterinary Staff'
 };
 
@@ -3302,7 +3019,7 @@ function renderVeterinaryUsers() {
 
         textCell(row, user.fullName, '', 'Name');
         textCell(row, user.email, '', 'Email');
-        textCell(row, adminRoleLabel(user.role), '', 'Role');
+        textCell(row, adminRoleLabel(user.role), 'admin-table-nowrap', 'Role');
 
         const statusCell = document.createElement('td');
         const status = document.createElement('span');

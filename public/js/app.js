@@ -4,6 +4,10 @@ const backendStatus = document.getElementById('backendStatus');
 const backendDetails = document.getElementById('backendDetails');
 const checkConnectionButton = document.getElementById('checkConnection');
 
+/**
+ * Updates the status text and lights the backend dot; only 'connected' and
+ * 'disconnected' set a colour, any other state leaves the dot neutral.
+ */
 function updateStatus(message, state) {
     backendStatus.textContent = message;
 
@@ -19,6 +23,10 @@ function updateStatus(message, state) {
     }
 }
 
+/**
+ * Calls GET /api/health and reports the result, disabling the check button
+ * while the request is in flight and restoring it in a finally block.
+ */
 async function checkBackend() {
     checkConnectionButton.disabled = true;
     checkConnectionButton.textContent = 'Checking...';

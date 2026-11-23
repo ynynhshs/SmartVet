@@ -7,6 +7,7 @@ const clinicLoginMessage = document.getElementById('clinicLoginMessage');
 
 // Eye icon: reveal or hide the password.
 document.querySelectorAll('.password-toggle').forEach((button) => {
+    // Toggles the target password field between masked and visible, syncing the pressed state and label.
     button.addEventListener('click', () => {
         const input = document.getElementById(button.dataset.target);
 
@@ -25,6 +26,10 @@ document.querySelectorAll('.password-toggle').forEach((button) => {
     });
 });
 
+/**
+ * Performs a fetch and parses JSON only when the response is JSON, throwing an
+ * Error built from the response message when the request fails.
+ */
 async function requestJson(url, options) {
     const response = await fetch(url, options);
     const contentType = response.headers.get('content-type') || '';
@@ -41,6 +46,11 @@ async function requestJson(url, options) {
     return data;
 }
 
+/**
+ * Signs the clinic staff member in through POST /api/auth/veterinary/login,
+ * saving the token and user before redirecting to the clinic dashboard; only
+ * veterinarian and veterinary_staff roles are accepted.
+ */
 clinicLoginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
 

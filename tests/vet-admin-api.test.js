@@ -13,7 +13,6 @@ const Pet = require('../src/models/Pet');
 const AuditLog = require('../src/models/AuditLog');
 const User = require('../src/models/User');
 const VaccinationRecord = require('../src/models/VaccinationRecord');
-const VaccineInventory = require('../src/models/VaccineInventory');
 const FeedingEvent = require('../src/models/FeedingEvent');
 const ActivityRecord = require('../src/models/ActivityRecord');
 const Notification = require('../src/models/Notification');
@@ -137,7 +136,6 @@ test('veterinary administration APIs enforce the administrator role', async () =
         petCount: Pet.countDocuments,
         vaccinationCount: VaccinationRecord.countDocuments,
         vetCount: VeterinaryUser.countDocuments,
-        inventoryCount: VaccineInventory.countDocuments,
         feedingCount: FeedingEvent.countDocuments,
         activityCount: ActivityRecord.countDocuments,
         notificationCount: Notification.countDocuments
@@ -208,7 +206,6 @@ test('veterinary administration APIs enforce the administrator role', async () =
 
     Pet.countDocuments = async () => 0;
     VaccinationRecord.countDocuments = async () => 0;
-    VaccineInventory.countDocuments = async () => 0;
     FeedingEvent.countDocuments = async () => 0;
     ActivityRecord.countDocuments = async () => 0;
     Notification.countDocuments = async () => 0;
@@ -246,7 +243,6 @@ test('veterinary administration APIs enforce the administrator role', async () =
         AuditLog.create = originals.auditCreate;
         Pet.countDocuments = originals.petCount;
         VaccinationRecord.countDocuments = originals.vaccinationCount;
-        VaccineInventory.countDocuments = originals.inventoryCount;
         FeedingEvent.countDocuments = originals.feedingCount;
         ActivityRecord.countDocuments = originals.activityCount;
         Notification.countDocuments = originals.notificationCount;

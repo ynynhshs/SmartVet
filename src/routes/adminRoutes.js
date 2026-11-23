@@ -9,7 +9,6 @@ const Pet = require('../models/Pet');
 const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
 const VaccinationRecord = require('../models/VaccinationRecord');
-const VaccineInventory = require('../models/VaccineInventory');
 const FeedingEvent = require('../models/FeedingEvent');
 const ActivityRecord = require('../models/ActivityRecord');
 const Notification = require('../models/Notification');
@@ -1025,7 +1024,6 @@ router.get(
                     Device.countDocuments({}),
                     VaccinationRecord.countDocuments({}),
                     VeterinaryUser.countDocuments({}),
-                    VaccineInventory.countDocuments({}),
                     FeedingEvent.countDocuments({}),
                     ActivityRecord.countDocuments({}),
                     Notification.countDocuments({}),
@@ -1037,7 +1035,7 @@ router.get(
 
             const [
                 ownerCount, petCount, deviceCount, vaccinationCount,
-                staffCount, lotCount, feedingCount, activityCount,
+                staffCount, feedingCount, activityCount,
                 notificationCount, auditCount
             ] = overview;
 
@@ -1058,7 +1056,6 @@ router.get(
                     registeredDevices: deviceCount,
                     vaccinationRecords: vaccinationCount,
                     veterinaryStaff: staffCount,
-                    vaccineLots: lotCount,
                     feedingEvents: feedingCount,
                     activityRecords: activityCount,
                     notifications: notificationCount,

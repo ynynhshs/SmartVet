@@ -14,12 +14,14 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+// Prompt on stdin/stdout and resolve with the trimmed answer.
 function ask(question) {
     return new Promise((resolve) => {
         rl.question(question, (answer) => resolve(answer.trim()));
     });
 }
 
+// Prompt for a secret without echoing it, reading raw keystrokes until Enter.
 function askHidden(question) {
     return new Promise((resolve) => {
         const stdin = process.stdin;
@@ -29,6 +31,7 @@ function askHidden(question) {
 
         let answer = '';
 
+        // Restore the terminal and stop listening once the secret is entered.
         function cleanup() {
             stdin.removeListener('data', onData);
             if (stdin.isTTY) {
@@ -37,6 +40,7 @@ function askHidden(question) {
             process.stdout.write('\n');
         }
 
+        // Accumulate printable characters, honour backspace and Ctrl+C.
         function onData(data) {
             const input = data.toString('utf8');
 
@@ -72,6 +76,7 @@ function askHidden(question) {
     });
 }
 
+// Interactively collect account details and insert the owner or staff record.
 async function createUser() {
     try {
         console.log('\n=== SmartVet Account Setup ===');
@@ -156,6 +161,7 @@ async function createUser() {
     }
 }
 
+// Open the database connection, run the prompt flow, then always disconnect.
 async function main() {
     try {
         await connectDB();

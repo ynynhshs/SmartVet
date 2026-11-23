@@ -41,6 +41,12 @@
     box-sizing: border-box;
 }
 
+/* Author `display` rules (e.g. .nav-item) would otherwise override the
+   `hidden` attribute, so keep hidden elements out of the layout. */
+[hidden] {
+    display: none !important;
+}
+
 html {
     min-height: 100%;
 }
@@ -1126,62 +1132,6 @@ button:disabled {
     }
 }
 
-/* SmartVet theme toggle */
-.sidebar-theme-area {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(130, 150, 175, 0.22);
-}
-
-.sidebar-theme-toggle {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 11px 12px;
-    border: 1px solid rgba(130, 150, 175, 0.25);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.45);
-    color: var(--clay-text);
-    font: inherit;
-    font-size: 0.88rem;
-    font-weight: 700;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.sidebar-theme-toggle:hover {
-    background: rgba(35, 137, 224, 0.12);
-    border-color: var(--clay-blue);
-}
-
-.theme-toggle-icon {
-    display: inline-flex;
-    flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    background: rgba(35, 137, 224, 0.12);
-    color: var(--clay-blue);
-    font-size: 1.2rem;
-}
-
-.theme-toggle-label {
-    flex: 1;
-}
-
-.clinic-shell.sidebar-collapsed .sidebar-theme-toggle {
-    justify-content: center;
-    padding: 8px 4px;
-}
-
-.clinic-shell.sidebar-collapsed .theme-toggle-label {
-    display: none;
-}
-
 /* SmartVet veterinary dark theme */
 body[data-theme="dark"] {
     color-scheme: dark;
@@ -1226,7 +1176,6 @@ body[data-theme="dark"] .section-card,
 body[data-theme="dark"] .pet-card,
 body[data-theme="dark"] .feeding-card,
 body[data-theme="dark"] .qr-panel,
-body[data-theme="dark"] .device-panel,
 body[data-theme="dark"] .empty-state {
     background-color: var(--clay-surface-card);
     color: var(--clay-text);
@@ -1266,26 +1215,19 @@ body[data-theme="dark"] a {
     color: #83c3ff;
 }
 
-body[data-theme="dark"] .sidebar-toggle,
-body[data-theme="dark"] .sidebar-theme-toggle {
+body[data-theme="dark"] .sidebar-toggle {
     background-color: #203149;
     color: var(--clay-text);
     border-color: #40536a;
 }
 
-body[data-theme="dark"] .sidebar-theme-toggle:hover,
 body[data-theme="dark"] .sidebar-toggle:hover {
     background-color: #2a405b;
 }
 
-body[data-theme="dark"] .sidebar-theme-area {
-    border-color: #34485f;
-}
-
 @media (prefers-reduced-motion: reduce) {
     .clinic-shell,
-    .sidebar-toggle,
-    .sidebar-theme-toggle {
+    .sidebar-toggle {
         transition: none;
     }
 }
@@ -1675,21 +1617,6 @@ body[data-theme="dark"] #devicesSection .device-status-revoked {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.qr-photo-placeholder {
-    width: 200px;
-    height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    border: 2px dashed rgba(180, 205, 230, 0.8);
-    border-radius: 16px;
-    background: rgba(230, 242, 252, 0.4);
-    color: var(--clay-muted);
-    text-align: center;
-    font-size: 0.9rem;
-}
-
 .qr-pet-details h2 {
     margin: 0 0 4px;
     color: var(--clay-heading);
@@ -1770,8 +1697,7 @@ body[data-theme="dark"] .qr-details-grid dd {
     .qr-pet-profile {
         grid-template-columns: minmax(0, 1fr);
     }
-    .qr-pet-photo,
-    .qr-photo-placeholder {
+    .qr-pet-photo {
         width: 100%;
         max-width: 240px;
         height: 200px;
@@ -2394,78 +2320,6 @@ body[data-theme="dark"] .qr-owner-eyebrow {
     margin-bottom: 12px;
 }
 
-.inventory-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-    gap: 16px;
-}
-
-.inventory-card {
-    min-width: 0;
-    padding: 18px;
-    border: 1px solid rgba(83, 116, 144, 0.18);
-    border-radius: 16px;
-    background: var(--clay-surface);
-    box-shadow: var(--clay-shadow-sm);
-}
-
-.inventory-card-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
-}
-
-.inventory-card-heading h3 {
-    margin: 0;
-    color: var(--clay-heading);
-    overflow-wrap: anywhere;
-}
-
-.inventory-status {
-    flex: 0 0 auto;
-    padding: 4px 9px;
-    border-radius: 999px;
-    color: #07543f;
-    background: #d9f5e9;
-    font-size: 0.72rem;
-    font-weight: 800;
-    text-transform: capitalize;
-}
-
-.inventory-status.low-stock {
-    color: #805100;
-    background: #fff1c2;
-}
-
-.inventory-status.expired,
-.inventory-status.out-of-stock {
-    color: #a32135;
-    background: #ffe4e8;
-}
-
-.inventory-adjust-form {
-    display: grid;
-    grid-template-columns: minmax(90px, 0.7fr) minmax(120px, 1fr) auto;
-    gap: 8px;
-    margin-top: 14px;
-}
-
-.inventory-adjust-form input {
-    min-width: 0;
-}
-
-.inventory-card details {
-    margin-top: 12px;
-}
-
-.inventory-card details p {
-    margin: 8px 0;
-    font-size: 0.82rem;
-    overflow-wrap: anywhere;
-}
-
 .report-filters {
     align-items: end;
 }
@@ -2498,17 +2352,8 @@ body[data-theme="dark"] .qr-owner-eyebrow {
     letter-spacing: 0.04em;
 }
 
-body[data-theme="dark"] .inventory-card {
-    border-color: #2b3d53;
-    background: #152337;
-}
-
-body[data-theme="dark"] .inventory-card-heading h3,
 body[data-theme="dark"] .clinic-report-table th {
     color: #eaf3fd;
-}
-
-body[data-theme="dark"] .clinic-report-table th {
     background: #1b2b40;
 }
 
@@ -2518,10 +2363,6 @@ body[data-theme="dark"] .clinic-report-table td {
 }
 
 @media (max-width: 560px) {
-    .inventory-adjust-form {
-        grid-template-columns: 1fr;
-    }
-
     .report-filters .form-actions {
         flex-wrap: wrap;
     }
@@ -2879,7 +2720,7 @@ body[data-theme="dark"] .qr-vaccination-history-card {
 
 .admin-table-actions button {
     min-height: 38px;
-    padding: 8px 14px;
+    padding: 8px 12px;
     font-size: 0.82rem;
 }
 

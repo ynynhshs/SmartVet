@@ -49,6 +49,7 @@ const COPIED_FIELDS = [
     'updatedAt'
 ];
 
+// Back up both collections, then move each staff account across id-preserving.
 async function main() {
     await mongoose.connect(process.env.MONGODB_URI);
     const db = mongoose.connection.db;

@@ -8,6 +8,7 @@
     const DIGIT_PATTERN = /^\d$/;
     const instances = new WeakMap();
 
+    /** Focuses a box and selects its content so typing replaces the digit. */
     function focusBox(input) {
         if (!input) return;
 
@@ -18,12 +19,17 @@
         }
     }
 
+    /** Toggles the is-filled class on every box based on whether it holds a digit. */
     function refreshBoxes(inputs) {
         inputs.forEach((input) => {
             input.classList.toggle('is-filled', input.value.length > 0);
         });
     }
 
+    /**
+     * Renders the six PIN boxes inside a container and returns their control
+     * API; the container is marked is-masked when data-pin-mask is present.
+     */
     function build(container) {
         const label = container.dataset.pinLabel || 'PIN';
 
@@ -51,10 +57,12 @@
         container.appendChild(grid);
         refreshBoxes(inputs);
 
+        /** Joins the current box values into the six-character PIN string. */
         function value() {
             return inputs.map((input) => input.value).join('');
         }
 
+        /** Fires a bubbling pinchange event carrying the current value and its length. */
         function dispatchChange() {
             const current = value();
 
@@ -65,6 +73,7 @@
         }
 
         inputs.forEach((input, index) => {
+            // Keeps one digit per box, auto-advancing focus to the next box when a digit is entered.
             input.addEventListener('input', () => {
                 // Only a single digit can live in a box.
                 input.value = input.value.replace(/\D/g, '').slice(-1);
@@ -77,6 +86,7 @@
                 dispatchChange();
             });
 
+            // Handles Backspace (clear, else step back), Delete, arrow navigation, and blocking non-digit keys.
             input.addEventListener('keydown', (event) => {
                 if (event.key === 'Backspace') {
                     if (input.value) {
@@ -122,6 +132,7 @@
                 }
             });
 
+            // Accepts a pasted string, distributes its digits across the boxes, and moves focus past the last filled box.
             input.addEventListener('paste', (event) => {
                 event.preventDefault();
 
@@ -139,6 +150,7 @@
                 dispatchChange();
             });
 
+            // Selects the box's content on focus so a new digit replaces it.
             input.addEventListener('focus', () => {
                 if (typeof input.select === 'function') {
                     input.select();
@@ -150,6 +162,7 @@
             inputs,
             grid,
             getValue: value,
+            /** Replaces the PIN from a string, keeping only the first six digits. */
             setValue(nextValue) {
                 const digits = String(nextValue || '')
                     .replace(/\D/g, '')
@@ -162,6 +175,7 @@
                 refreshBoxes(inputs);
                 dispatchChange();
             },
+            /** Adds one digit to the first empty box, ignoring non-digits, and advances focus. */
             append(digit) {
                 const index = inputs.findIndex((box) => !box.value);
 
@@ -175,6 +189,10 @@
                     focusBox(inputs[index + 1]);
                 }
             },
+            /**
+             * Clears the box before the first empty one (or the last box when all
+             * are filled) and focuses it.
+             */
             backspace() {
                 const firstEmpty = inputs.findIndex((box) => !box.value);
                 const target = firstEmpty === -1
@@ -186,6 +204,7 @@
                 focusBox(inputs[target]);
                 dispatchChange();
             },
+            /** Empties every box and returns focus to the first one. */
             clear() {
                 inputs.forEach((box) => {
                     box.value = '';
@@ -195,17 +214,23 @@
                 focusBox(inputs[0]);
                 dispatchChange();
             },
+            /** Focuses the first empty box, or the last box when the PIN is complete. */
             focus() {
                 const firstEmpty = inputs.findIndex((box) => !box.value);
 
                 focusBox(firstEmpty === -1 ? inputs[inputs.length - 1] : firstEmpty);
             },
+            /** Tells whether all six boxes hold a digit. */
             isComplete() {
                 return value().length === inputs.length;
             }
         };
     }
 
+    /**
+     * Builds the PIN boxes for a container once and caches the instance in a
+     * WeakMap, returning the existing API on repeat calls (or null for no container).
+     */
     function init(container) {
         if (!container) return null;
 

@@ -9,6 +9,7 @@ const User = require('../src/models/User');
 const VeterinaryUser = require('../src/models/VeterinaryUser');
 const { hashPassword } = require('../src/services/authService');
 
+// Ask one question on a fresh readline and resolve with the trimmed answer.
 function askLine(question) {
     return new Promise((resolve) => {
         const rl = readline.createInterface({
@@ -37,6 +38,7 @@ function askHidden(question) {
 
         let password = '';
 
+        // Restore the terminal and stop listening once the password is entered.
         function cleanup() {
             input.removeListener('data', onData);
             input.setRawMode(false);
@@ -44,6 +46,7 @@ function askHidden(question) {
             process.stdout.write('\n');
         }
 
+        // Echo asterisks, honour backspace and reject Ctrl+C.
         function onData(buffer) {
             for (const character of buffer.toString('utf8')) {
                 if (character === '\u0003') {
@@ -84,6 +87,7 @@ function askHidden(question) {
     });
 }
 
+// Bootstrap the very first clinic administrator, refusing to run twice.
 async function createInitialAdmin() {
     await connectDB();
 

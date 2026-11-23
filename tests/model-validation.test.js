@@ -8,7 +8,6 @@ const ActivityRecord = require('../src/models/ActivityRecord');
 const Device = require('../src/models/Device');
 const Notification = require('../src/models/Notification');
 const AuditLog = require('../src/models/AuditLog');
-const VaccineInventory = require('../src/models/VaccineInventory');
 
 const mongoose = require('mongoose');
 
@@ -133,17 +132,6 @@ const validAuditLog = {
     summary: 'Test pet registration approval.'
 };
 
-const validVaccineInventory = {
-    vaccineName: 'Anti-Rabies',
-    manufacturer: 'Test Manufacturer',
-    batchNumber: 'LOT-001',
-    expiryDate: new Date(Date.now() + 30 * 86400000),
-    stockQuantity: 20,
-    lowStockThreshold: 5,
-    createdBy: veterinaryId,
-    updatedBy: veterinaryId
-};
-
 console.log('\n=== VALID DATA TESTS ===');
 
 expectValid('User accepts valid data', User, validUser);
@@ -185,11 +173,6 @@ expectValid(
     validNotification
 );
 expectValid('AuditLog accepts valid data', AuditLog, validAuditLog);
-expectValid(
-    'VaccineInventory accepts a valid lot with whole-dose stock',
-    VaccineInventory,
-    validVaccineInventory
-);
 
 console.log('\n=== INVALID DATA TESTS ===');
 
@@ -257,13 +240,6 @@ expectInvalid(
     AuditLog,
     { ...validAuditLog, entityType: 'unsupported_entity' },
     'entityType'
-);
-
-expectInvalid(
-    'VaccineInventory rejects fractional stock counts',
-    VaccineInventory,
-    { ...validVaccineInventory, stockQuantity: 1.5 },
-    'stockQuantity'
 );
 
 console.log('\n=== TEST SUMMARY ===');

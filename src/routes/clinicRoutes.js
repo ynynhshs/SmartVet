@@ -9,7 +9,6 @@ const Pet = require('../models/Pet');
 const VaccinationRecord = require('../models/VaccinationRecord');
 const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
-const VaccineInventory = require('../models/VaccineInventory');
 const { clinicDateString } = require('../utils/clinicDate');
 const { attachActors } = require('../services/actorService');
 
@@ -360,7 +359,7 @@ router.get('/dashboard-overview', async (req, res, next) => {
 // Return bounded, date-filtered rows for veterinary staff to review or export.
 router.get('/reports', async (req, res, next) => {
     const reportType = req.query.type;
-    const allowedTypes = ['registrations', 'vaccinations', 'followups', 'inventory'];
+    const allowedTypes = ['registrations', 'vaccinations', 'followups'];
 
     if (typeof reportType !== 'string' || !allowedTypes.includes(reportType)) {
         return res.status(400).json({
@@ -466,35 +465,6 @@ router.get('/reports', async (req, res, next) => {
                 record.dosage || '',
                 record.administeredBy?.fullName || ''
             ]);
-        } else {
-            columns = [
-                'Vaccine', 'Manufacturer', 'Batch / lot', 'Expiry date',
-                'Doses in stock', 'Low-stock threshold', 'Stock status'
-            ];
-            const inventory = await VaccineInventory.find({})
-                .sort({ expiryDate: 1, vaccineName: 1 })
-                .limit(5001)
-                .lean();
-            rows = inventory.map((item) => {
-                const today = new Date();
-                today.setUTCHours(0, 0, 0, 0);
-                const status = item.expiryDate < today
-                    ? 'Expired'
-                    : item.stockQuantity === 0
-                        ? 'Out of stock'
-                        : item.stockQuantity <= item.lowStockThreshold
-                            ? 'Low stock'
-                            : 'In stock';
-                return [
-                    item.vaccineName,
-                    item.manufacturer,
-                    item.batchNumber,
-                    item.expiryDate,
-                    item.stockQuantity,
-                    item.lowStockThreshold,
-                    status
-                ];
-            });
         }
 
         const truncated = rows.length > 5000;
@@ -957,17 +927,7 @@ router.post(
             .bail()
             .trim()
             .isLength({ max: 2000 })
-            .withMessage('Notes cannot exceed 2000 characters.'),
-
-        body('inventoryItemId')
-            .optional({ values: 'falsy' })
-            .isMongoId()
-            .withMessage('Choose a valid vaccine inventory lot.'),
-
-        body('inventoryQuantityUsed')
-            .optional({ values: 'falsy' })
-            .isInt({ min: 1, max: 1000 })
-            .withMessage('Doses used must be a whole number from 1 to 1,000.')
+            .withMessage('Notes cannot exceed 2000 characters.')
     ],
     async (req, res, next) => {
         const errors = validationResult(req);
@@ -1005,50 +965,6 @@ router.post(
                 });
             }
 
-            let inventoryItem = null;
-            const inventoryQuantityUsed =
-                req.body.inventoryQuantityUsed === undefined
-                    ? 1
-                    : Number(req.body.inventoryQuantityUsed);
-            if (req.body.inventoryItemId) {
-                if (
-                    !Number.isInteger(inventoryQuantityUsed) ||
-                    inventoryQuantityUsed < 1 ||
-                    inventoryQuantityUsed > 1000
-                ) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Doses used must be a whole number from 1 to 1,000.'
-                    });
-                }
-
-                if (!mongoose.isValidObjectId(req.body.inventoryItemId)) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Choose a valid vaccine inventory lot.'
-                    });
-                }
-
-                inventoryItem = await VaccineInventory.findById(
-                    req.body.inventoryItemId
-                ).lean();
-                if (!inventoryItem) {
-                    return res.status(404).json({
-                        success: false,
-                        message: 'Vaccine inventory lot not found.'
-                    });
-                }
-                if (
-                    inventoryItem.vaccineName.trim().toLowerCase() !==
-                    req.body.vaccineName.trim().toLowerCase()
-                ) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'The selected inventory lot does not match the vaccine name.'
-                    });
-                }
-            }
-
             const vaccinationData = {
                 petId: pet._id,
                 vaccineName: req.body.vaccineName.trim(),
@@ -1056,18 +972,11 @@ router.post(
                     `${req.body.administeredDate}T00:00:00.000Z`
                 ),
                 administeredBy: req.user.id,
-                batchNumber: inventoryItem
-                    ? inventoryItem.batchNumber
-                    : req.body.batchNumber?.trim() || '',
-                manufacturer: inventoryItem
-                    ? inventoryItem.manufacturer
-                    : req.body.manufacturer?.trim() || '',
+                batchNumber: req.body.batchNumber?.trim() || '',
+                manufacturer: req.body.manufacturer?.trim() || '',
                 dosage: req.body.dosage?.trim() || '',
                 notes: req.body.notes?.trim() || ''
             };
-            if (inventoryItem) {
-                vaccinationData.vaccineInventoryId = inventoryItem._id;
-            }
 
             if (req.body.nextDueDate) {
                 vaccinationData.nextDueDate = new Date(
@@ -1075,73 +984,7 @@ router.post(
                 );
             }
 
-            const recordId = new mongoose.Types.ObjectId();
-            if (inventoryItem) {
-                const today = new Date();
-                today.setUTCHours(0, 0, 0, 0);
-                const updatedInventory = await VaccineInventory.findOneAndUpdate(
-                    {
-                        _id: inventoryItem._id,
-                        stockQuantity: { $gte: inventoryQuantityUsed },
-                        expiryDate: { $gte: today }
-                    },
-                    {
-                        $inc: { stockQuantity: -inventoryQuantityUsed },
-                        $set: { updatedBy: req.user.id },
-                        $push: {
-                            movements: {
-                                $each: [{
-                                    type: 'administered',
-                                    quantityChange: -inventoryQuantityUsed,
-                                    reason: `Used for ${pet.name} (${vaccinationData.vaccineName})`,
-                                    actorUserId: req.user.id,
-                                    vaccinationRecordId: recordId
-                                }],
-                                $slice: -100
-                            }
-                        }
-                    },
-                    { new: true, runValidators: true }
-                );
-
-                if (!updatedInventory) {
-                    return res.status(409).json({
-                        success: false,
-                        message: 'The selected vaccine lot is expired or has insufficient stock. Refresh inventory and try again.'
-                    });
-                }
-            }
-
-            let record;
-            try {
-                record = await VaccinationRecord.create({
-                    _id: recordId,
-                    ...vaccinationData
-                });
-            } catch (error) {
-                if (inventoryItem) {
-                    await VaccineInventory.findByIdAndUpdate(
-                        inventoryItem._id,
-                        {
-                            $inc: { stockQuantity: inventoryQuantityUsed },
-                            $set: { updatedBy: req.user.id },
-                            $push: {
-                                movements: {
-                                    $each: [{
-                                        type: 'reversal',
-                                        quantityChange: inventoryQuantityUsed,
-                                        reason: `Reversed failed vaccination record for ${pet.name}`,
-                                        actorUserId: req.user.id,
-                                        vaccinationRecordId: recordId
-                                    }],
-                                    $slice: -100
-                                }
-                            }
-                        }
-                    );
-                }
-                throw error;
-            }
+            const record = await VaccinationRecord.create(vaccinationData);
 
             return res.status(201).json({
                 success: true,

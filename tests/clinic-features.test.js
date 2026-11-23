@@ -8,11 +8,9 @@ const mongoose = require('mongoose');
 const User = require('../src/models/User');
 const Pet = require('../src/models/Pet');
 const VaccinationRecord = require('../src/models/VaccinationRecord');
-const VaccineInventory = require('../src/models/VaccineInventory');
 const { createAccessToken } = require('../src/services/authService');
 const clinicRoutes = require('../src/routes/clinicRoutes');
 const ownerRoutes = require('../src/routes/ownerRoutes');
-const inventoryRoutes = require('../src/routes/vaccineInventoryRoutes');
 
 class MockQuery {
     constructor(value) {
@@ -44,11 +42,10 @@ class MockQuery {
     }
 }
 
-test('owner vaccine follow-up and clinic reporting/inventory APIs', async () => {
+test('owner vaccine follow-up and clinic reporting APIs', async () => {
     const veterinaryId = new mongoose.Types.ObjectId();
     const ownerId = new mongoose.Types.ObjectId();
     const petId = new mongoose.Types.ObjectId();
-    const inventoryId = new mongoose.Types.ObjectId();
     const veterinaryUser = {
         _id: veterinaryId,
         role: 'veterinary',
@@ -69,17 +66,6 @@ test('owner vaccine follow-up and clinic reporting/inventory APIs', async () => 
         registrationStatus: 'approved',
         ownerUserId: ownerId
     };
-    const inventoryItem = {
-        _id: inventoryId,
-        vaccineName: 'Anti-Rabies',
-        manufacturer: 'Test Maker',
-        batchNumber: 'LOT-001',
-        expiryDate: new Date(Date.now() + 30 * 86400000),
-        stockQuantity: 5,
-        lowStockThreshold: 2,
-        notes: '',
-        movements: []
-    };
     let reportFilter;
     let vaccinationData;
     let vaccinationCreateCount = 0;
@@ -88,11 +74,7 @@ test('owner vaccine follow-up and clinic reporting/inventory APIs', async () => 
         petFind: Pet.find,
         petFindOne: Pet.findOne,
         vaccinationFind: VaccinationRecord.find,
-        vaccinationCreate: VaccinationRecord.create,
-        inventoryFind: VaccineInventory.find,
-        inventoryFindById: VaccineInventory.findById,
-        inventoryFindOneAndUpdate: VaccineInventory.findOneAndUpdate,
-        inventoryFindByIdAndUpdate: VaccineInventory.findByIdAndUpdate
+        vaccinationCreate: VaccinationRecord.create
     };
 
     User.findById = (id) => ({
@@ -121,30 +103,15 @@ test('owner vaccine follow-up and clinic reporting/inventory APIs', async () => 
     };
     VaccinationRecord.create = async (data) => {
         vaccinationCreateCount += 1;
-        vaccinationData = { ...data, createdAt: new Date() };
+        vaccinationData = {
+            _id: new mongoose.Types.ObjectId(),
+            ...data,
+            createdAt: new Date()
+        };
         return vaccinationData;
     };
-    VaccineInventory.find = () => new MockQuery([inventoryItem]);
-    VaccineInventory.findById = () => new MockQuery(inventoryItem);
-    VaccineInventory.findOneAndUpdate = (filter, update) => {
-        if (inventoryItem.stockQuantity < filter.stockQuantity.$gte) {
-            return new MockQuery(null);
-        }
-        if (inventoryItem.expiryDate < filter.expiryDate.$gte) {
-            return new MockQuery(null);
-        }
-        inventoryItem.stockQuantity += update.$inc.stockQuantity;
-        inventoryItem.movements.push(update.$push.movements.$each[0]);
-        return new MockQuery(inventoryItem);
-    };
-    VaccineInventory.findByIdAndUpdate = async (_id, update) => {
-        inventoryItem.stockQuantity += update.$inc.stockQuantity;
-        inventoryItem.movements.push(update.$push.movements.$each[0]);
-    };
-
     const app = express();
     app.use(express.json());
-    app.use('/api/clinic/vaccine-inventory', inventoryRoutes);
     app.use('/api/clinic', clinicRoutes);
     app.use('/api/owner', ownerRoutes);
     app.use((error, _req, res, _next) =>
@@ -158,10 +125,6 @@ test('owner vaccine follow-up and clinic reporting/inventory APIs', async () => 
         Pet.findOne = originals.petFindOne;
         VaccinationRecord.find = originals.vaccinationFind;
         VaccinationRecord.create = originals.vaccinationCreate;
-        VaccineInventory.find = originals.inventoryFind;
-        VaccineInventory.findById = originals.inventoryFindById;
-        VaccineInventory.findOneAndUpdate = originals.inventoryFindOneAndUpdate;
-        VaccineInventory.findByIdAndUpdate = originals.inventoryFindByIdAndUpdate;
     });
 
     await new Promise((resolve) => server.once('listening', resolve));
@@ -198,14 +161,6 @@ test('owner vaccine follow-up and clinic reporting/inventory APIs', async () => 
     );
     assert.equal(invalidReportResponse.status, 400);
 
-    const stockResponse = await fetch(
-        `${baseUrl}/api/clinic/vaccine-inventory`,
-        { headers: veterinaryHeaders }
-    );
-    const stockData = await stockResponse.json();
-    assert.equal(stockResponse.status, 200);
-    assert.equal(stockData.inventory[0].stockQuantity, 5);
-
     const vaccineResponse = await fetch(
         `${baseUrl}/api/clinic/pets/${petId}/vaccinations`,
         {
@@ -214,17 +169,12 @@ test('owner vaccine follow-up and clinic reporting/inventory APIs', async () => 
             body: JSON.stringify({
                 vaccineName: 'Anti-Rabies',
                 administeredDate: '2026-11-18',
-                nextDueDate: '2026-12-18',
-                inventoryItemId: inventoryId.toString(),
-                inventoryQuantityUsed: 2
+                nextDueDate: '2026-12-18'
             })
         }
     );
     assert.equal(vaccineResponse.status, 201);
-    assert.equal(inventoryItem.stockQuantity, 3);
-    assert.equal(vaccinationData.vaccineInventoryId.toString(), inventoryId.toString());
-    assert.equal(inventoryItem.movements[0].quantityChange, -2);
-    assert.equal(inventoryItem.movements[0].vaccinationRecordId.toString(), vaccinationData._id.toString());
+    assert.equal(vaccinationData.vaccineName, 'Anti-Rabies');
 
     const unauthorizedResponse = await fetch(
         `${baseUrl}/api/clinic/reports?type=vaccinations`,

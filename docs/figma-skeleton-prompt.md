@@ -121,8 +121,7 @@ This is a **wireframe**, not a loading state. Apply this split everywhere:
     4. Vaccination management 💊
     5. Feeding history 🍽️
     6. Device Management 📟
-    7. Vaccine Inventory 🧪
-    8. Reports & Exports 📊
+    7. Reports & Exports 📊
   - Bottom: theme toggle row (icon + label "Dark mode")
 - Main area: background `#E6F0FA`, padding 28px clamp(20px, 3vw, 40px) 60px.
 
@@ -150,7 +149,7 @@ This is a **wireframe**, not a loading state. Apply this split everywhere:
 
 **A4 — Vaccination management (`Vet — Vaccinations`)**
 - Heading: eyebrow "CLINICAL RECORDS", H1 "Vaccination Records", gray lines; right = "Refresh approved pets" button.
-- Panel: full-width select labeled "Select approved pet" (empty well) + gray helper line, then H2 "Record a Vaccination" and a 2-column form grid with **real labels / empty wells**: Use inventory lot (optional, full width) · Doses used · Vaccine name * · Date administered * · Next due date · Batch or lot number · Manufacturer · Dosage · Notes (full-width textarea); then "Save Vaccination" primary button and a status line.
+- Panel: full-width select labeled "Select approved pet" (empty well) + gray helper line, then H2 "Record a Vaccination" and a 2-column form grid with **real labels / empty wells**: Vaccine name * · Date administered * · Next due date · Batch or lot number · Manufacturer · Dosage · Notes (full-width textarea); then "Save Vaccination" primary button and a status line.
 - Panel "Vaccination History": heading + gray line + "Refresh history" button, then **3 placeholder rows**.
 
 **A5 — Feeding history (`Vet — Feeding`)**
@@ -164,17 +163,12 @@ This is a **wireframe**, not a loading state. Apply this split everywhere:
 - Panel "Register a Device": stacked form with **real labels / empty wells** — Device Code · Device Type (select) · Assign to Pet (select) · Firmware Version · Description (textarea); "Register Device" primary button; status line.
 - Panel "Registered Devices": heading + gray line + "Refresh Devices" button, then grid of **2 device cards** (min 320px): gray title + gray status pill, gray detail lines, and an actions row (select + real-label button).
 
-**A7 — Vaccine Inventory (`Vet — Inventory`)**
-- Heading: eyebrow "CLINICAL SUPPLIES", H1 "Vaccine Inventory", gray line; right = "Refresh inventory".
-- Panel "Add vaccine lot": 2-column form grid with real labels / empty wells — Vaccine * · Manufacturer * · Batch / lot number * · Expiry date * · Initial doses * · Low-stock alert at · Notes (full width); "Add lot" primary button.
-- Panel "Stock by lot": heading + gray line, then grid of **3 placeholder lot cards** (min 340px): gray title + gray pill, gray detail lines, gray footer row.
-
-**A8 — Reports & Exports (`Vet — Reports`)**
+**A7 — Reports & Exports (`Vet — Reports`)**
 - Heading: eyebrow "CLINIC INSIGHTS", H1 "Reports & Exports", gray line.
 - Panel with a filter row: select labeled "Report", date input labeled "From", date input labeled "To", then "Run report" (primary) + "Download CSV" (disabled look) buttons; status line; gray results placeholder block.
 
-**A9 — Modals (draw as centered overlay frames on top of A2/A4)**
-- **Add Vaccination Record:** header = icon badge + eyebrow "CLINICAL RECORD" + title + gray pet line + "Close" button; body = section label "Inventory lot (optional)" + select row, section label "Vaccination details" + form grid (Vaccine Name, Administration Date, Next Due Date, Batch Number, Manufacturer, Dosage, full-width Notes); footer = "Save Vaccination" primary button.
+**A8 — Modals (draw as centered overlay frames on top of A2/A4)**
+- **Add Vaccination Record:** header = icon badge + eyebrow "CLINICAL RECORD" + title + gray pet line + "Close" button; body = section label "Vaccination details" + form grid (Vaccine Name, Administration Date, Next Due Date, Batch Number, Manufacturer, Dosage, full-width Notes); footer = "Save Vaccination" primary button.
 - **Vaccination History:** header (icon + eyebrow "CLINICAL RECORD" + title + gray pet line + Close); body = placeholder list of 3 entries.
 - **Owner details:** card with gray avatar + gray name, grid of label/value rows with real keys (Email, Phone, Date of Birth, Sex/Gender, Civil Status, Nationality, Government ID, Occupation, Current Address, Permanent Address) and gray value lines; footer = "Email owner" + "Done".
 

@@ -50,6 +50,10 @@ const unlockWithPinButton = document.getElementById('unlockWithPinButton');
 // The saved account is what lets the app skip the email/password form.
 let pinAccount = SmartVetSession.getPinAccount();
 
+/**
+ * Stores the given account as the saved PIN account and refreshes the PIN view's
+ * name and email labels, falling back to "Pet owner" and an empty email when absent.
+ */
 function renderPinAccount(account) {
     pinAccount = account;
 
@@ -64,24 +68,19 @@ function renderPinAccount(account) {
     }
 }
 
+// Read the PIN currently held by the six boxes (empty string without the widget).
 function currentPin() {
     return pinBoxes ? pinBoxes.getValue() : '';
 }
 
+// Enable unlock only once exactly six digits are present.
 function updateUnlockButton() {
     if (!unlockWithPinButton) return;
 
     unlockWithPinButton.disabled = currentPin().length !== PIN_LENGTH;
 }
 
-function setPinValue(value) {
-    if (!pinBoxes) return;
-
-    pinBoxes.setValue(value);
-    pinMessage.textContent = '';
-    updateUnlockButton();
-}
-
+// Empty the PIN boxes and refresh the unlock button state.
 function clearPinValue() {
     if (!pinBoxes) return;
 
@@ -89,6 +88,7 @@ function clearPinValue() {
     updateUnlockButton();
 }
 
+// Derive up to two initials from the registered full name for the avatar fallback.
 function updateAvatarInitials() {
     const parts = registerFullName.value.trim().split(/\s+/).filter(Boolean);
     const initials = parts
@@ -99,6 +99,7 @@ function updateAvatarInitials() {
     registerAvatarInitials.textContent = initials || '🐾';
 }
 
+// Swap the avatar between the chosen photo and the initials fallback.
 function showAvatarPhoto(url) {
     if (url) {
         registerAvatarImage.src = url;
@@ -112,6 +113,7 @@ function showAvatarPhoto(url) {
     }
 }
 
+// Trigger the hidden file input that holds the registration profile photo.
 function openPhotoPicker() {
     registerProfilePhoto.click();
 }
@@ -123,6 +125,7 @@ const appViews = [
     { id: 'forgotPin', element: forgotPinView }
 ];
 
+// Show one of the four card views and reset the panel scroll position.
 function showView(viewId) {
     appViews.forEach((view) => {
         if (view.element) {
@@ -144,16 +147,19 @@ function updateBackToPinLink() {
     wrap.hidden = !(pinAccount && loginView && !loginView.hidden);
 }
 
+// Switch to the email/password card and clear any registration error.
 function showLoginView() {
     registerMessage.textContent = '';
     showView('login');
 }
 
+// Switch to the registration card and clear any login error.
 function showRegisterView() {
     loginMessage.textContent = '';
     showView('register');
 }
 
+// Switch to the PIN unlock card and refocus the first box.
 function showPinView() {
     pinMessage.textContent = '';
     showView('pin');
@@ -163,6 +169,7 @@ function showPinView() {
     clearPinValue();
 }
 
+// Open the forgot-PIN card prefilled with the saved account's email.
 function openForgotPinView() {
     const emailField = document.getElementById('forgotPinEmail');
 
@@ -284,7 +291,10 @@ if (pinBoxesElement) {
     });
 }
 
-// Parses JSON responses and turns HTML error pages into a readable message
+/**
+ * Fetch JSON from an endpoint, turning non-2xx responses and HTML error pages
+ * into a readable Error message.
+ */
 async function requestJson(url, options) {
     const response = await fetch(url, options);
     const contentType = response.headers.get('content-type') || '';
@@ -297,6 +307,7 @@ async function requestJson(url, options) {
     return data;
 }
 
+// Send the signed-in user to the dashboard for their role, rejecting unknown roles.
 function redirectByRole(user) {
     const ownerAppMode = new URLSearchParams(window.location.search).get('app') === 'owner';
     if (ownerAppMode && user?.role !== 'owner') {
@@ -320,6 +331,7 @@ function redirectByRole(user) {
     window.location.assign(destination);
 }
 
+// Persist the token and user, then route into the matching dashboard.
 function saveAuthenticatedSession(data) {
     if (!data.success || !data.accessToken || !data.user) {
         throw new Error('The server returned an invalid authentication response.');
@@ -366,7 +378,7 @@ loginForm.addEventListener('submit', async (event) => {
     }
 });
 
-// Unlock the saved owner account with its PIN.
+// Exchange the saved account's email and six-digit PIN for a session token.
 async function unlockWithPin() {
     const email = pinAccount ? pinAccount.email : '';
     const pin = currentPin();
