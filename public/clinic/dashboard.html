@@ -120,12 +120,12 @@
                 <span>User Management</span>
             </button>
 
+            <!-- Available to every clinic account: the appearance settings live
+                 here, and administrators also get the clinic configuration. -->
             <button
                 type="button"
-                class="nav-item nav-administrator"
-                data-view="settings"
-                data-administrator-only
-                hidden>
+                class="nav-item"
+                data-view="settings">
                 <span class="nav-icon" aria-hidden="true">⚙️</span>
                 <span>System Settings</span>
             </button>
@@ -151,19 +151,6 @@
             </button>
 
         </nav>
-
-        
-        <div class="sidebar-theme-area">
-            <button
-                type="button"
-                class="sidebar-theme-toggle"
-                id="clinicThemeToggle"
-                aria-label="Switch to dark mode"
-                title="Switch to dark mode">
-                <span class="theme-toggle-icon" aria-hidden="true">☾</span>
-                <span class="theme-toggle-label">Dark mode</span>
-            </button>
-        </div>
     </aside>
 
     <main class="clinic-main">
@@ -1253,7 +1240,7 @@
                                 <th>Role</th>
                                 <th>Status</th>
                                 <th>Last Sign-in</th>
-                                <th>Actions</th>
+                                <th class="actions-column">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="vetUsersTableBody">
@@ -1268,21 +1255,22 @@
             </section>
         </section>
 
-        <!-- SYSTEM SETTINGS (veterinary administrator only) -->
+        <!-- SYSTEM SETTINGS: appearance for every clinic account, the clinic
+             configuration below is administrator-only. -->
         <section
             class="clinic-view"
             id="settingsSection"
             data-page="settings"
-            data-administrator-only
             hidden>
 
             <div class="page-heading">
                 <div>
-                    <p class="page-eyebrow">ADMINISTRATION</p>
+                    <p class="page-eyebrow">CLINIC WORKSPACE</p>
                     <h1>System Settings</h1>
                     <p class="muted">
-                        Configure clinic details, registration workflow, reminders,
-                        device telemetry, and sign-in security.
+                        Appearance is available to every staff account. Clinic
+                        details, registration workflow, reminders, device telemetry,
+                        and sign-in security are administrator settings.
                     </p>
                 </div>
             </div>
@@ -1293,6 +1281,39 @@
                 role="status"
                 aria-live="polite"></p>
 
+            <section class="workspace-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Appearance</h2>
+                        <p class="muted">
+                            Choose how the clinic workspace looks on this device.
+                            Your choice is saved here and applies straight away.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="theme-options" role="group" aria-label="Theme">
+                    <button type="button" class="theme-option" data-theme-option="light">
+                        <span class="theme-option-icon" aria-hidden="true">☀</span>
+                        <span class="theme-option-text">
+                            <strong>Light</strong>
+                            <small>Bright surfaces and blue accents.</small>
+                        </span>
+                        <span class="theme-option-check" aria-hidden="true">✓</span>
+                    </button>
+
+                    <button type="button" class="theme-option" data-theme-option="dark">
+                        <span class="theme-option-icon" aria-hidden="true">☾</span>
+                        <span class="theme-option-text">
+                            <strong>Dark</strong>
+                            <small>Easier on the eyes at night.</small>
+                        </span>
+                        <span class="theme-option-check" aria-hidden="true">✓</span>
+                    </button>
+                </div>
+            </section>
+
+            <div class="admin-settings-panels" data-administrator-only hidden>
             <section class="workspace-panel">
                 <div class="section-heading">
                     <div>
@@ -1456,6 +1477,7 @@
                     Save Settings
                 </button>
             </section>
+            </div>
         </section>
 
         <!-- GLOBAL DEVICE REGISTRY (veterinary administrator only) -->
@@ -1607,7 +1629,6 @@
                                 <option value="vaccination_record">Vaccination</option>
                                 <option value="feeding_schedule">Feeding schedule</option>
                                 <option value="feeding_event">Feeding event</option>
-                                <option value="activity_record">Activity record</option>
                                 <option value="device">Device</option>
                                 <option value="notification">Notification</option>
                                 <option value="system">System</option>
@@ -1743,102 +1764,6 @@
                                 <option value="false">Not required</option>
                             </select>
                         </div>
-                    </div>
-
-                    <p class="smartvet-modal-section">Personal information</p>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="vetUserDateOfBirth">Date of birth</label>
-                            <input type="date" id="vetUserDateOfBirth">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserGender">Sex / Gender</label>
-                            <select id="vetUserGender">
-                                <option value="">Select...</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Prefer not to say">Prefer not to say</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserCivilStatus">Civil status</label>
-                            <select id="vetUserCivilStatus">
-                                <option value="">Select...</option>
-                                <option value="Single">Single</option>
-                                <option value="Married">Married</option>
-                                <option value="Widowed">Widowed</option>
-                                <option value="Separated">Separated</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserNationality">Nationality</label>
-                            <input
-                                type="text"
-                                id="vetUserNationality"
-                                maxlength="100">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserGovId">Government ID</label>
-                            <input
-                                type="text"
-                                id="vetUserGovId"
-                                maxlength="100">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserOccupation">Occupation</label>
-                            <select id="vetUserOccupation">
-                                <option value="">Select...</option>
-                                <option value="Employed">Employed</option>
-                                <option value="Self-Employed">Self-Employed</option>
-                                <option value="Student">Student</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserPhone">Phone number</label>
-                            <input
-                                type="tel"
-                                id="vetUserPhone"
-                                maxlength="30"
-                                autocomplete="tel">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserLicenseNumber">Professional license no.</label>
-                            <input
-                                type="text"
-                                id="vetUserLicenseNumber"
-                                maxlength="100">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="vetUserPosition">Position</label>
-                            <input
-                                type="text"
-                                id="vetUserPosition"
-                                maxlength="120">
-                        </div>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label for="vetUserAddress">Current address</label>
-                        <textarea
-                            id="vetUserAddress"
-                            rows="2"
-                            maxlength="250"></textarea>
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label for="vetUserPermanentAddress">Permanent address</label>
-                        <textarea
-                            id="vetUserPermanentAddress"
-                            rows="2"
-                            maxlength="250"></textarea>
                     </div>
 
                     <p

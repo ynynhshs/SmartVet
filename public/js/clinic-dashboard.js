@@ -3099,51 +3099,45 @@ if (copyDeviceTokenButton) {
 })();
 
 
-/* SmartVet shared light/dark theme */
+/* SmartVet shared light/dark theme (System Settings > Appearance) */
 (function initializeClinicTheme() {
-    const toggle = document.getElementById('clinicThemeToggle');
-
-    if (!toggle) return;
-
-    const icon = toggle.querySelector('.theme-toggle-icon');
-    const label = toggle.querySelector('.theme-toggle-label');
     const storageKey = 'smartvetTheme';
+    const optionButtons = Array.from(
+        document.querySelectorAll('[data-theme-option]')
+    );
+
+    function currentTheme() {
+        return document.body.dataset.theme === 'dark' ? 'dark' : 'light';
+    }
 
     function applyTheme(theme) {
         const isDark = theme === 'dark';
 
         document.body.dataset.theme = isDark ? 'dark' : 'light';
 
-        toggle.setAttribute('aria-pressed', String(isDark));
-        toggle.setAttribute(
-            'aria-label',
-            isDark ? 'Switch to light mode' : 'Switch to dark mode'
-        );
-        toggle.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
-
-        if (icon) {
-            icon.textContent = isDark ? '☀' : '☾';
-        }
-
-        if (label) {
-            label.textContent = isDark ? 'Light mode' : 'Dark mode';
-        }
+        optionButtons.forEach((button) => {
+            const selected = button.dataset.themeOption === (isDark ? 'dark' : 'light');
+            button.classList.toggle('is-selected', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
     }
 
     applyTheme(localStorage.getItem(storageKey) === 'dark' ? 'dark' : 'light');
 
-    toggle.addEventListener('click', () => {
-    const nextTheme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+    optionButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const nextTheme = button.dataset.themeOption === 'dark' ? 'dark' : 'light';
+            if (nextTheme === currentTheme()) return;
 
-    document.body.classList.add('theme-transitioning');
+            document.body.classList.add('theme-transitioning');
+            applyTheme(nextTheme);
+            localStorage.setItem(storageKey, nextTheme);
 
-    applyTheme(nextTheme);
-    localStorage.setItem(storageKey, nextTheme);
-
-    window.setTimeout(() => {
-        document.body.classList.remove('theme-transitioning');
-    }, 400);
-});
+            window.setTimeout(() => {
+                document.body.classList.remove('theme-transitioning');
+            }, 400);
+        });
+    });
 })();
 
 
@@ -3322,12 +3316,12 @@ function renderVeterinaryUsers() {
         textCell(
             row,
             user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never signed in',
-            '',
+            'admin-table-nowrap',
             'Last Sign-in'
         );
 
         const actionsCell = document.createElement('td');
-        actionsCell.className = 'admin-table-actions';
+        actionsCell.className = 'admin-table-actions admin-table-nowrap';
         actionsCell.dataset.label = 'Actions';
 
         const editButton = document.createElement('button');
@@ -3427,19 +3421,6 @@ function openVetUserDialog(user = null) {
         user ? String(Boolean(user.mustChangePassword)) : 'false'
     );
 
-    document.getElementById('vetUserDateOfBirth').value =
-        user?.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '';
-    setAdminSelectValue(document.getElementById('vetUserGender'), user?.gender || '');
-    setAdminSelectValue(document.getElementById('vetUserCivilStatus'), user?.civilStatus || '');
-    document.getElementById('vetUserNationality').value = user?.nationality || '';
-    document.getElementById('vetUserGovId').value = user?.govId || '';
-    setAdminSelectValue(document.getElementById('vetUserOccupation'), user?.occupation || '');
-    document.getElementById('vetUserPhone').value = user?.phone || '';
-    document.getElementById('vetUserLicenseNumber').value = user?.licenseNumber || '';
-    document.getElementById('vetUserPosition').value = user?.position || '';
-    document.getElementById('vetUserAddress').value = user?.address || '';
-    document.getElementById('vetUserPermanentAddress').value = user?.permanentAddress || '';
-
     vetUserForm.dataset.userId = isEdit ? user.id : '';
 
     openAdminDialog(vetUserDialog);
@@ -3462,18 +3443,7 @@ async function submitVeterinaryUser(event) {
         email: document.getElementById('vetUserEmail').value.trim(),
         role: document.getElementById('vetUserRole').value,
         status: document.getElementById('vetUserStatus').value,
-        mustChangePassword: document.getElementById('vetUserMustChangePassword').value === 'true',
-        dateOfBirth: document.getElementById('vetUserDateOfBirth').value || null,
-        gender: document.getElementById('vetUserGender').value,
-        civilStatus: document.getElementById('vetUserCivilStatus').value,
-        nationality: document.getElementById('vetUserNationality').value.trim(),
-        govId: document.getElementById('vetUserGovId').value.trim(),
-        occupation: document.getElementById('vetUserOccupation').value,
-        phone: document.getElementById('vetUserPhone').value.trim(),
-        licenseNumber: document.getElementById('vetUserLicenseNumber').value.trim(),
-        position: document.getElementById('vetUserPosition').value.trim(),
-        address: document.getElementById('vetUserAddress').value.trim(),
-        permanentAddress: document.getElementById('vetUserPermanentAddress').value.trim()
+        mustChangePassword: document.getElementById('vetUserMustChangePassword').value === 'true'
     };
 
     if (password) {
@@ -3594,6 +3564,13 @@ async function deleteVeterinaryUser(user) {
 
 async function loadSystemSettings() {
     if (!dashboardReady || !clinicSettingsForm) return;
+
+    // Appearance is open to every staff account; the clinic configuration
+    // below it is administrator-only, so staff never call the admin endpoint.
+    if (!isAdministratorSession()) {
+        if (systemSettingsMessage) showMessage(systemSettingsMessage, '', '');
+        return;
+    }
 
     systemSettingFields.forEach((field) => {
         const element = document.getElementById(field);
@@ -3886,6 +3863,14 @@ function renderAuditOverview(overview) {
     });
 }
 
+/* Turns machine values such as SYSTEM_SETTINGS_UPDATED into readable labels. */
+function humanizeAuditValue(value) {
+    return String(value || 'none')
+        .split('_')
+        .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+        .join(' ');
+}
+
 function renderAuditLogs(logs) {
     if (!auditLogsTableBody) return;
 
@@ -3909,8 +3894,8 @@ function renderAuditLogs(logs) {
 
         textCell(row, formatDateTime(log.createdAt), '', 'When');
         textCell(row, log.actor ? log.actor.fullName : 'System', '', 'Actor');
-        textCell(row, log.action, 'admin-table-action', 'Action');
-        textCell(row, log.entityType || 'none', '', 'Record');
+        textCell(row, humanizeAuditValue(log.action), 'admin-table-action', 'Action');
+        textCell(row, humanizeAuditValue(log.entityType), '', 'Record');
         textCell(row, log.summary, '', 'Details');
 
         auditLogsTableBody.appendChild(row);

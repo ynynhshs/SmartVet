@@ -976,7 +976,7 @@ router.get(
             .optional()
             .isIn([
                 'user', 'pet', 'vaccination_record', 'feeding_schedule',
-                'feeding_event', 'activity_record', 'device', 'notification',
+                'feeding_event', 'device', 'notification',
                 'system', 'none'
             ])
             .withMessage('Choose a valid record type.'),
@@ -1000,6 +1000,10 @@ router.get(
         }
         if (req.query.entityType) filter.entityType = req.query.entityType;
         if (req.query.source) filter.source = req.query.source;
+
+        // Activity-monitoring telemetry comes from collars, not from staff
+        // actions, so it stays out of the clinic audit trail.
+        filter.entityType = { $ne: 'activity_record' };
 
         const limit = Number(req.query.limit) || 100;
 
@@ -1025,7 +1029,9 @@ router.get(
                     FeedingEvent.countDocuments({}),
                     ActivityRecord.countDocuments({}),
                     Notification.countDocuments({}),
-                    AuditLog.countDocuments({})
+                    // Keep the overview in step with the audit trail, which
+                    // never shows activity-monitoring telemetry.
+                    AuditLog.countDocuments({ entityType: { $ne: 'activity_record' } })
                 ])
             ]);
 

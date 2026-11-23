@@ -17,7 +17,7 @@
             <span>SmartVet</span>
         </a>
 
-        <div class="connection-indicator" aria-live="polite">
+        <div class="connection-indicator" aria-live="polite">   
             <span id="backendDot" class="status-dot"></span>
             <span id="backendStatus">Checking backend...</span>
         </div>
