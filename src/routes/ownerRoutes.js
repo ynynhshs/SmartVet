@@ -755,7 +755,7 @@ router.get('/feeding-events', async (req, res, next) => {
 router.get('/activity-records', async (req, res, next) => {
     try {
         const allowedActivities = ['walking', 'running', 'resting', 'sleeping', 'inactive', 'unknown'];
-        const { petId, activity } = req.query;
+        const { petId, activity, from, to } = req.query;
 
         if (petId && !mongoose.isValidObjectId(petId)) {
             return res.status(400).json({ success: false, message: 'Invalid pet ID.' });
@@ -763,6 +763,33 @@ router.get('/activity-records', async (req, res, next) => {
         if (activity && !allowedActivities.includes(activity)) {
             return res.status(400).json({ success: false, message: 'Invalid activity classification.' });
         }
+
+        // Optional date window. Both bounds are inclusive; each must be a valid
+        // ISO date on its own so a half-filled range is a 400, not a silent no-op.
+        const measuredAt = {};
+        const windowFields = [['from', '$gte'], ['to', '$lte']];
+
+        for (const [field, operator] of windowFields) {
+            const value = req.query[field];
+
+            if (!value) {
+                continue;
+            }
+
+            if (!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(value) || Number.isNaN(new Date(value).getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: `${field} must be a valid date.`
+                });
+            }
+
+            measuredAt[operator] = new Date(value);
+        }
+
+        // The history is paged so a collar that reports often cannot push the
+        // whole history past a fixed cap.
+        const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 50, 1), 200);
+        const skip = Math.max(Number.parseInt(req.query.skip, 10) || 0, 0);
 
         const ownedPets = await Pet.find({ ownerUserId: req.user.id }).select('_id').lean();
         const ownedPetIds = ownedPets.map((pet) => pet._id);
@@ -778,17 +805,25 @@ router.get('/activity-records', async (req, res, next) => {
             petId: petId ? new mongoose.Types.ObjectId(petId) : { $in: ownedPetIds }
         };
         if (activity) filter.activity = activity;
+        if (Object.keys(measuredAt).length > 0) filter.measuredAt = measuredAt;
 
-        const records = await ActivityRecord.find(filter)
-            .populate('petId', 'name species petCode')
-            .populate('deviceId', 'deviceCode deviceType')
-            .sort({ measuredAt: -1 })
-            .limit(200)
-            .lean();
+        const [total, records] = await Promise.all([
+            ActivityRecord.countDocuments(filter),
+            ActivityRecord.find(filter)
+                .populate('petId', 'name species petCode')
+                .populate('deviceId', 'deviceCode deviceType')
+                .sort({ measuredAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean()
+        ]);
 
         return res.status(200).json({
             success: true,
             count: records.length,
+            total,
+            limit,
+            skip,
             records: records.map((record) => ({
                 id: record._id.toString(),
                 pet: record.petId ? {

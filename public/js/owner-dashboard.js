@@ -53,6 +53,12 @@ const ownerActivityPetFilter = document.getElementById(
 const ownerActivityTypeFilter = document.getElementById(
     'ownerActivityTypeFilter'
 );
+const ownerActivityFromFilter = document.getElementById(
+    'ownerActivityFromFilter'
+);
+const ownerActivityLoadMoreButton = document.getElementById(
+    'ownerActivityLoadMoreButton'
+);
 
 // Sidebar counts & Overview stats
 const sidebarPetsCount = document.getElementById('sidebarPetsCount');
@@ -1000,8 +1006,19 @@ async function populateOwnerFeedingPetFilter() {
 }
 
 // Owner Activity Monitoring: load activity records for the owner's pets.
-async function loadOwnerActivityRecords() {
+// Records arrive newest-first in pages; "Load more" appends the next page.
+const OWNER_ACTIVITY_LIMIT = 50;
+let ownerActivitySkip = 0;
+let ownerActivityTotal = 0;
+
+async function loadOwnerActivityRecords(options = {}) {
     if (!ownerActivityRecordsList) return;
+
+    const append = Boolean(options.append);
+
+    ownerActivitySkip = append
+        ? ownerActivitySkip + OWNER_ACTIVITY_LIMIT
+        : 0;
 
     ownerActivityRecordsList.setAttribute('aria-busy', 'true');
 
@@ -1009,12 +1026,23 @@ async function loadOwnerActivityRecords() {
         refreshOwnerActivityButton.disabled = true;
     }
 
+    if (ownerActivityLoadMoreButton) {
+        ownerActivityLoadMoreButton.disabled = true;
+    }
+
     if (ownerActivitySummary) {
-        showMessage(ownerActivitySummary, 'Loading your pets\' activity records...');
+        showMessage(
+            ownerActivitySummary,
+            append
+                ? 'Loading more activity records...'
+                : 'Loading your pets\' activity records...'
+        );
     }
 
     // Replaced text loader with Skeleton Loader
-    ownerActivityRecordsList.replaceChildren(createSkeletonLoader(2));
+    if (!append) {
+        ownerActivityRecordsList.replaceChildren(createSkeletonLoader(2));
+    }
 
     try {
         const query = new URLSearchParams();
@@ -1027,6 +1055,13 @@ async function loadOwnerActivityRecords() {
             query.set('activity', ownerActivityTypeFilter.value);
         }
 
+        if (ownerActivityFromFilter?.value) {
+            query.set('from', ownerActivityFromFilter.value);
+        }
+
+        query.set('limit', String(OWNER_ACTIVITY_LIMIT));
+        query.set('skip', String(ownerActivitySkip));
+
         const queryString = query.toString();
         const url = queryString
             ? `/api/owner/activity-records?${queryString}`
@@ -1034,10 +1069,13 @@ async function loadOwnerActivityRecords() {
 
         const data = await apiRequest(url);
         const records = Array.isArray(data.records) ? data.records : [];
+        ownerActivityTotal = Number(data.total) || 0;
 
-        ownerActivityRecordsList.replaceChildren();
+        if (!append) {
+            ownerActivityRecordsList.replaceChildren();
+        }
 
-        if (records.length === 0) {
+        if (records.length === 0 && !append) {
             const emptyMessage = document.createElement('p');
             emptyMessage.className = 'muted';
             emptyMessage.textContent =
@@ -1046,6 +1084,10 @@ async function loadOwnerActivityRecords() {
 
             if (ownerActivitySummary) {
                 showMessage(ownerActivitySummary, 'No matching activity records found.');
+            }
+
+            if (ownerActivityLoadMoreButton) {
+                ownerActivityLoadMoreButton.hidden = true;
             }
 
             return;
@@ -1087,31 +1129,61 @@ async function loadOwnerActivityRecords() {
                     ? `Measured: ${measuredDate.toLocaleString()}`
                     : 'Measured: Unknown time';
 
+            const sensorLine = document.createElement('p');
+            sensorLine.className = 'muted';
+
+            const sensor = record.sensorSummary || {};
+            sensorLine.textContent =
+                sensor.averageAccelerationMagnitude === undefined ||
+                sensor.averageAccelerationMagnitude === null
+                    ? 'Sensor: Not provided'
+                    : `Sensor: ${sensor.averageAccelerationMagnitude} g from ${sensor.sampleCount ?? '?'} samples`;
+
             card.append(
                 heading,
                 collarLine,
                 durationLine,
+                sensorLine,
                 measuredLine
             );
 
             ownerActivityRecordsList.appendChild(card);
         });
 
+        const shown = ownerActivitySkip + records.length;
+
+        if (ownerActivityLoadMoreButton) {
+            const hasMore = shown < ownerActivityTotal;
+
+            ownerActivityLoadMoreButton.hidden = !hasMore;
+            ownerActivityLoadMoreButton.disabled = false;
+            ownerActivityLoadMoreButton.textContent =
+                `Load more (${shown} of ${ownerActivityTotal})`;
+        }
+
         if (ownerActivitySummary) {
             showMessage(
                 ownerActivitySummary,
-                `${records.length} activity record(s) loaded.`
+                ownerActivityTotal === 0
+                    ? 'No matching activity records found.'
+                    : `Showing ${shown} of ${ownerActivityTotal} activity record(s).`
             );
         }
     } catch (error) {
-        ownerActivityRecordsList.replaceChildren();
+        if (!append) {
+            ownerActivityRecordsList.replaceChildren();
 
-        const errorMessage = document.createElement('p');
-        errorMessage.className = 'message error';
-        errorMessage.textContent =
-            error.message || 'Unable to load activity records.';
+            const errorMessage = document.createElement('p');
+            errorMessage.className = 'message error';
+            errorMessage.textContent =
+                error.message || 'Unable to load activity records.';
 
-        ownerActivityRecordsList.appendChild(errorMessage);
+            ownerActivityRecordsList.appendChild(errorMessage);
+        }
+
+        if (ownerActivityLoadMoreButton) {
+            ownerActivityLoadMoreButton.disabled = false;
+        }
 
         if (ownerActivitySummary) {
             showMessage(
@@ -1125,6 +1197,10 @@ async function loadOwnerActivityRecords() {
 
         if (refreshOwnerActivityButton) {
             refreshOwnerActivityButton.disabled = false;
+        }
+
+        if (ownerActivityLoadMoreButton) {
+            ownerActivityLoadMoreButton.disabled = false;
         }
     }
 }
@@ -1600,6 +1676,20 @@ if (ownerActivityTypeFilter) {
         'change',
         loadOwnerActivityRecords
     );
+}
+
+if (ownerActivityFromFilter) {
+    ownerActivityFromFilter.addEventListener(
+        'change',
+        loadOwnerActivityRecords
+    );
+}
+
+// Append the next page instead of replacing the list.
+if (ownerActivityLoadMoreButton) {
+    ownerActivityLoadMoreButton.addEventListener('click', () => {
+        loadOwnerActivityRecords({ append: true });
+    });
 }
 
 

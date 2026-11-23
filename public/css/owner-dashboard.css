@@ -768,8 +768,9 @@ button:disabled {
     font-weight: 600;
 }
 
-/* Pet and status dropdowns */
-.owner-feeding-filters select {
+/* Pet and status dropdowns, plus the activity "from" date */
+.owner-feeding-filters select,
+.owner-feeding-filters input[type="date"] {
     display: block;
     width: 100%;
     min-height: 44px;
@@ -783,7 +784,8 @@ button:disabled {
     cursor: pointer;
 }
 
-.owner-feeding-filters select:focus {
+.owner-feeding-filters select:focus,
+.owner-feeding-filters input[type="date"]:focus {
     outline: 3px solid rgba(37, 99, 235, 0.2);
     border-color: #3b82f6;
 }
@@ -791,6 +793,43 @@ button:disabled {
 .owner-feeding-filters button {
     min-height: 44px;
     flex-shrink: 0;
+}
+
+/* Activity Monitoring history */
+.activity-records-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 16px;
+    align-items: start;
+    margin: 4px 0 18px;
+}
+
+.owner-activity-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 20px;
+    border: 1px solid rgba(83, 116, 144, 0.18);
+    border-radius: 18px;
+    background: var(--clay-surface);
+    box-shadow: var(--clay-shadow-sm);
+}
+
+.owner-activity-card h3 {
+    margin: 0;
+    color: var(--clay-heading);
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+}
+
+.owner-activity-card p {
+    margin: 0;
+}
+
+.owner-activity-load-more {
+    margin: 0 auto;
 }
 
 /* Make filters fit smaller screens */

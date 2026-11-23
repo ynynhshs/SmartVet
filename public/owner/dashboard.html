@@ -544,6 +544,11 @@
                                 <option value="unknown">Unknown</option>
                             </select>
                         </label>
+
+                        <label for="ownerActivityFromFilter">
+                            From date
+                            <input type="date" id="ownerActivityFromFilter">
+                        </label>
                     </div>
 
                     <p
@@ -563,6 +568,14 @@
                             Open Activity Monitoring to load your pets' activity records.
                         </div>
                     </div>
+
+                    <button
+                        id="ownerActivityLoadMoreButton"
+                        class="secondary-button"
+                        type="button"
+                        hidden>
+                        Load more
+                    </button>
 
                     <p class="form-help">
                         Activity readings depend on data reported by a connected collar.
