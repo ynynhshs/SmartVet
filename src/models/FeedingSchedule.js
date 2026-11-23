@@ -97,9 +97,11 @@ const feedingScheduleSchema = new mongoose.Schema(
         },
 
         // Veterinary staff member who configured the schedule.
+        // // The id belongs to the `VeterinaryUser` collection; resolve it with
+        // `attachActors` from `src/services/actorService.js`, because a Mongoose
+        // `ref` can only name one collection.
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
             required: [true, 'Creating user is required.']
         }
     },

@@ -5,7 +5,10 @@ const userSchema = new mongoose.Schema(
         fullName: { type: String, required: [true, 'Full name is required.'], trim: true, minlength: 2, maxlength: 120 },
         email: { type: String, required: [true, 'Email address is required.'], unique: true, lowercase: true, trim: true, maxlength: 254 },
         passwordHash: { type: String, required: [true, 'Password hash is required.'], select: false },
-        role: { type: String, enum: ['admin', 'veterinary', 'owner'], default: 'owner', required: true },
+        // Pet owners only. Veterinary staff accounts live in the separate
+        // `VeterinaryUser` collection, so an owner document can never be turned
+        // into a clinic account by editing this field.
+        role: { type: String, enum: ['owner'], default: 'owner', required: true },
         
         // --- NEW PERSONAL DETAILS ---
         dateOfBirth: { type: Date, default: null },

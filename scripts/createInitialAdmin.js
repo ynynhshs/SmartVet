@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 
 const connectDB = require('../src/config/db');
 const User = require('../src/models/User');
+const VeterinaryUser = require('../src/models/VeterinaryUser');
 const { hashPassword } = require('../src/services/authService');
 
 function askLine(question) {
@@ -86,16 +87,18 @@ function askHidden(question) {
 async function createInitialAdmin() {
     await connectDB();
 
-    // Make sure the user indexes, including the unique email index,
+    // Make sure the account indexes, including the unique email index,
     // are ready before creating an account.
-    await User.init();
+    await VeterinaryUser.init();
 
-    // This script can bootstrap the first administrator only.
-    const existingAdmin = await User.exists({ role: 'admin' });
+    // This script can bootstrap the first clinic administrator only.
+    const existingAdmin = await VeterinaryUser.exists({
+        role: 'veterinarian'
+    });
 
     if (existingAdmin) {
         throw new Error(
-            'An administrator already exists. No account was created.'
+            'A clinic administrator already exists. No account was created.'
         );
     }
 
@@ -117,9 +120,13 @@ async function createInitialAdmin() {
         throw new Error('Enter a valid email address.');
     }
 
-    const existingUser = await User.exists({ email });
+    // Emails are unique across both sign-in collections.
+    const [existingOwner, existingStaff] = await Promise.all([
+        User.exists({ email }),
+        VeterinaryUser.exists({ email })
+    ]);
 
-    if (existingUser) {
+    if (existingOwner || existingStaff) {
         throw new Error(
             'This email already belongs to an account.'
         );
@@ -138,18 +145,20 @@ async function createInitialAdmin() {
 
     // The administrator role is assigned only by this trusted
     // local bootstrap script, never by a public signup request.
-    const admin = await User.create({
+    const admin = await VeterinaryUser.create({
         fullName,
         email,
         passwordHash,
-        role: 'admin',
+        role: 'veterinarian',
         status: 'active'
     });
 
-    console.log('\nInitial administrator created successfully.');
+    console.log('\nInitial clinic administrator created successfully.');
     console.log(`Account ID: ${admin._id}`);
     console.log(`Email: ${admin.email}`);
-    console.log('Role: admin');
+    console.log('Role: veterinarian');
+    console.log('Collection: veterinaryusers');
+    console.log('Sign in at /clinic/login.html.');
     console.log('The password was hashed before storage.');
 }
 

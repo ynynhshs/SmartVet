@@ -109,6 +109,47 @@
                 <span>Reports & Exports</span>
             </button>
 
+            <!-- Administrator-only areas. Hidden for veterinary_staff. -->
+            <button
+                type="button"
+                class="nav-item nav-administrator"
+                data-view="userManagement"
+                data-administrator-only
+                hidden>
+                <span class="nav-icon" aria-hidden="true">👤</span>
+                <span>User Management</span>
+            </button>
+
+            <button
+                type="button"
+                class="nav-item nav-administrator"
+                data-view="settings"
+                data-administrator-only
+                hidden>
+                <span class="nav-icon" aria-hidden="true">⚙️</span>
+                <span>System Settings</span>
+            </button>
+
+            <button
+                type="button"
+                class="nav-item nav-administrator"
+                data-view="deviceRegistry"
+                data-administrator-only
+                hidden>
+                <span class="nav-icon" aria-hidden="true">📟</span>
+                <span>Device Registry</span>
+            </button>
+
+            <button
+                type="button"
+                class="nav-item nav-administrator"
+                data-view="auditLogs"
+                data-administrator-only
+                hidden>
+                <span class="nav-icon" aria-hidden="true">🧾</span>
+                <span>Audit Logs</span>
+            </button>
+
         </nav>
 
         
@@ -1155,6 +1196,732 @@
             </section>
         </section>
 
+
+        <!-- USER MANAGEMENT (veterinary administrator only) -->
+        <section
+            class="clinic-view"
+            id="userManagementSection"
+            data-page="userManagement"
+            data-administrator-only
+            hidden>
+
+            <div class="page-heading">
+                <div>
+                    <p class="page-eyebrow">ADMINISTRATION</p>
+                    <h1>User Management</h1>
+                    <p class="muted">
+                        Create veterinary staff accounts, assign their role, and
+                        control clinic system access.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="primary"
+                    id="addVetUserButton">
+                    Add User
+                </button>
+            </div>
+
+            <p
+                id="vetUsersMessage"
+                class="message"
+                role="status"
+                aria-live="polite"></p>
+
+            <section class="workspace-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Veterinary Staff Accounts</h2>
+                        <p class="muted">
+                            Accounts created here sign in at the veterinary portal.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="secondary"
+                        id="refreshVetUsersButton">
+                        Refresh Users
+                    </button>
+                </div>
+
+                <div class="skeleton-table-wrap">
+                    <table class="skeleton-table admin-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Last Sign-in</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vetUsersTableBody">
+                            <tr>
+                                <td colspan="6" class="muted">
+                                    Open User Management to load staff accounts.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+
+        <!-- SYSTEM SETTINGS (veterinary administrator only) -->
+        <section
+            class="clinic-view"
+            id="settingsSection"
+            data-page="settings"
+            data-administrator-only
+            hidden>
+
+            <div class="page-heading">
+                <div>
+                    <p class="page-eyebrow">ADMINISTRATION</p>
+                    <h1>System Settings</h1>
+                    <p class="muted">
+                        Configure clinic details, registration workflow, reminders,
+                        device telemetry, and sign-in security.
+                    </p>
+                </div>
+            </div>
+
+            <p
+                id="systemSettingsMessage"
+                class="message"
+                role="status"
+                aria-live="polite"></p>
+
+            <section class="workspace-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Clinic Profile</h2>
+                        <p class="muted">Shown across the veterinary workspace.</p>
+                    </div>
+                </div>
+
+                <form id="clinicSettingsForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="clinicName">Clinic name</label>
+                            <input
+                                type="text"
+                                id="clinicName"
+                                maxlength="120">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="clinicEmail">Clinic email</label>
+                            <input
+                                type="email"
+                                id="clinicEmail"
+                                maxlength="254">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="clinicPhone">Clinic phone</label>
+                            <input
+                                type="tel"
+                                id="clinicPhone"
+                                maxlength="30">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="clinicAddress">Clinic address</label>
+                            <input
+                                type="text"
+                                id="clinicAddress"
+                                maxlength="250">
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <section class="workspace-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Registration &amp; Access</h2>
+                        <p class="muted">
+                            Control how pet owners register and sign in.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group inline-group">
+                        <label for="requirePetVerification">
+                            Require veterinary review before a pet becomes approved
+                        </label>
+                        <select id="requirePetVerification">
+                            <option value="true">Required</option>
+                            <option value="false">Not required</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group inline-group">
+                        <label for="allowOwnerRegistration">
+                            Allow new pet owner self-registration
+                        </label>
+                        <select id="allowOwnerRegistration">
+                            <option value="true">Allowed</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group inline-group">
+                        <label for="allowOwnerPinUnlock">
+                            Allow owner PIN fast unlock
+                        </label>
+                        <select id="allowOwnerPinUnlock">
+                            <option value="true">Allowed</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="workspace-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Reminders, Devices &amp; Security</h2>
+                        <p class="muted">
+                            System-wide behaviour for reminders, telemetry, and sessions.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group inline-group">
+                        <label for="reminderEnabled">
+                            Send vaccination reminder notifications
+                        </label>
+                        <select id="reminderEnabled">
+                            <option value="true">Enabled</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reminderDaysBefore">
+                            Remind owners this many days before a due date
+                        </label>
+                        <input
+                            type="number"
+                            id="reminderDaysBefore"
+                            min="0"
+                            max="60"
+                            step="1">
+                    </div>
+
+                    <div class="form-group inline-group">
+                        <label for="deviceTelemetryEnabled">
+                            Accept telemetry from registered IoT devices
+                        </label>
+                        <select id="deviceTelemetryEnabled">
+                            <option value="true">Enabled</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maxLoginAttempts">
+                            Password attempts allowed per 15 minutes
+                        </label>
+                        <input
+                            type="number"
+                            id="maxLoginAttempts"
+                            min="3"
+                            max="20"
+                            step="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sessionTimeoutMinutes">
+                            Session timeout (minutes)
+                        </label>
+                        <input
+                            type="number"
+                            id="sessionTimeoutMinutes"
+                            min="15"
+                            max="1440"
+                            step="15">
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    class="primary"
+                    id="saveSystemSettingsButton">
+                    Save Settings
+                </button>
+            </section>
+        </section>
+
+        <!-- GLOBAL DEVICE REGISTRY (veterinary administrator only) -->
+        <section
+            class="clinic-view"
+            id="deviceRegistrySection"
+            data-page="deviceRegistry"
+            data-administrator-only
+            hidden>
+
+            <div class="page-heading">
+                <div>
+                    <p class="page-eyebrow">ADMINISTRATION</p>
+                    <h1>Global IoT Device Registry</h1>
+                    <p class="muted">
+                        Every feeder and activity collar registered in SmartVet,
+                        regardless of which staff member registered it.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="secondary"
+                    id="refreshDeviceRegistryButton">
+                    Refresh Registry
+                </button>
+            </div>
+
+            <div class="admin-stat-row" id="deviceRegistryStats"></div>
+
+            <p
+                id="deviceRegistryMessage"
+                class="message"
+                role="status"
+                aria-live="polite"></p>
+
+            <section class="workspace-panel">
+                <div class="section-heading admin-table-toolbar">
+                    <div>
+                        <h2>Registered Devices</h2>
+                        <p class="muted">
+                            Filter the registry by status or device type.
+                        </p>
+                    </div>
+
+                    <div class="admin-table-filters">
+                        <div class="form-group inline-group">
+                            <label for="deviceRegistryStatusFilter">Status</label>
+                            <select id="deviceRegistryStatusFilter">
+                                <option value="">All statuses</option>
+                                <option value="active">Active</option>
+                                <option value="disabled">Disabled</option>
+                                <option value="revoked">Revoked</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group inline-group">
+                            <label for="deviceRegistryTypeFilter">Type</label>
+                            <select id="deviceRegistryTypeFilter">
+                                <option value="">All types</option>
+                                <option value="feeder">Automatic Feeder</option>
+                                <option value="collar">Activity Collar</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="skeleton-table-wrap">
+                    <table class="skeleton-table admin-table">
+                        <thead>
+                            <tr>
+                                <th>Device Code</th>
+                                <th>Type</th>
+                                <th>Assigned Pet</th>
+                                <th>Status</th>
+                                <th>Last Seen</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceRegistryTableBody">
+                            <tr>
+                                <td colspan="6" class="muted">
+                                    Open the Device Registry to load devices.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+
+        <!-- SYSTEM AUDIT LOGS (veterinary administrator only) -->
+        <section
+            class="clinic-view"
+            id="auditLogsSection"
+            data-page="auditLogs"
+            data-administrator-only
+            hidden>
+
+            <div class="page-heading">
+                <div>
+                    <p class="page-eyebrow">ADMINISTRATION</p>
+                    <h1>System Audit Logs</h1>
+                    <p class="muted">
+                        Review every action taken in SmartVet, who performed it,
+                        and which record it affected.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="secondary"
+                    id="refreshAuditLogsButton">
+                    Refresh Logs
+                </button>
+            </div>
+
+            <div class="admin-stat-row" id="auditOverviewStats"></div>
+
+            <p
+                id="auditLogsMessage"
+                class="message"
+                role="status"
+                aria-live="polite"></p>
+
+            <section class="workspace-panel">
+                <div class="section-heading admin-table-toolbar">
+                    <div>
+                        <h2>Audit Trail</h2>
+                        <p class="muted">
+                            Newest entries appear first.
+                        </p>
+                    </div>
+
+                    <div class="admin-table-filters">
+                        <div class="form-group inline-group">
+                            <label for="auditActionFilter">Action</label>
+                            <input
+                                type="text"
+                                id="auditActionFilter"
+                                placeholder="e.g. VET_USER_CREATED"
+                                maxlength="100">
+                        </div>
+
+                        <div class="form-group inline-group">
+                            <label for="auditEntityTypeFilter">Record type</label>
+                            <select id="auditEntityTypeFilter">
+                                <option value="">All types</option>
+                                <option value="user">User</option>
+                                <option value="pet">Pet</option>
+                                <option value="vaccination_record">Vaccination</option>
+                                <option value="feeding_schedule">Feeding schedule</option>
+                                <option value="feeding_event">Feeding event</option>
+                                <option value="activity_record">Activity record</option>
+                                <option value="device">Device</option>
+                                <option value="notification">Notification</option>
+                                <option value="system">System</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group inline-group">
+                            <label for="auditSourceFilter">Source</label>
+                            <select id="auditSourceFilter">
+                                <option value="">All sources</option>
+                                <option value="user">User</option>
+                                <option value="system">System</option>
+                                <option value="device">Device</option>
+                            </select>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="secondary"
+                            id="applyAuditFiltersButton">
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+
+                <div class="skeleton-table-wrap">
+                    <table class="skeleton-table admin-table">
+                        <thead>
+                            <tr>
+                                <th>When</th>
+                                <th>Actor</th>
+                                <th>Action</th>
+                                <th>Record</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditLogsTableBody">
+                            <tr>
+                                <td colspan="5" class="muted">
+                                    Open Audit Logs to load the system trail.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+
+        <!-- ADD / EDIT VETERINARY USER MODAL -->
+        <dialog id="vetUserDialog" class="smartvet-modal">
+            <div class="smartvet-modal-header">
+                <span class="smartvet-modal-icon" aria-hidden="true">👤</span>
+
+                <div class="smartvet-modal-title">
+                    <p class="page-eyebrow">USER ACCOUNT</p>
+                    <h2 id="vetUserDialogTitle">Add User</h2>
+                    <p id="vetUserDialogSubtitle" class="muted">
+                        The account signs in at the veterinary portal.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="secondary smartvet-modal-close"
+                    data-close-dialog="vetUserDialog"
+                    aria-label="Close user form">
+                    Close
+                </button>
+            </div>
+
+            <div class="smartvet-modal-body">
+                <form id="vetUserForm">
+                    <p class="smartvet-modal-section">Account access</p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="vetUserFullName">Full name *</label>
+                            <input
+                                type="text"
+                                id="vetUserFullName"
+                                maxlength="120"
+                                autocomplete="name"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserEmail">Email address *</label>
+                            <input
+                                type="email"
+                                id="vetUserEmail"
+                                maxlength="254"
+                                autocomplete="username"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserRole">Role *</label>
+                            <select id="vetUserRole" required>
+                                <option value="veterinary_staff">Veterinary Staff</option>
+                                <option value="veterinarian">Veterinarian (Administrator)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserPassword">
+                                Password *
+                                <span id="vetUserPasswordHint">
+                                    Minimum 8 characters.
+                                </span>
+                            </label>
+                            <input
+                                type="password"
+                                id="vetUserPassword"
+                                minlength="8"
+                                maxlength="72"
+                                autocomplete="new-password"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserStatus">Account status</label>
+                            <select id="vetUserStatus">
+                                <option value="active">Active</option>
+                                <option value="disabled">Disabled</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserMustChangePassword">
+                                Require a password change at next sign-in
+                            </label>
+                            <select id="vetUserMustChangePassword">
+                                <option value="true">Required</option>
+                                <option value="false">Not required</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <p class="smartvet-modal-section">Personal information</p>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="vetUserDateOfBirth">Date of birth</label>
+                            <input type="date" id="vetUserDateOfBirth">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserGender">Sex / Gender</label>
+                            <select id="vetUserGender">
+                                <option value="">Select...</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Prefer not to say">Prefer not to say</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserCivilStatus">Civil status</label>
+                            <select id="vetUserCivilStatus">
+                                <option value="">Select...</option>
+                                <option value="Single">Single</option>
+                                <option value="Married">Married</option>
+                                <option value="Widowed">Widowed</option>
+                                <option value="Separated">Separated</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserNationality">Nationality</label>
+                            <input
+                                type="text"
+                                id="vetUserNationality"
+                                maxlength="100">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserGovId">Government ID</label>
+                            <input
+                                type="text"
+                                id="vetUserGovId"
+                                maxlength="100">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserOccupation">Occupation</label>
+                            <select id="vetUserOccupation">
+                                <option value="">Select...</option>
+                                <option value="Employed">Employed</option>
+                                <option value="Self-Employed">Self-Employed</option>
+                                <option value="Student">Student</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserPhone">Phone number</label>
+                            <input
+                                type="tel"
+                                id="vetUserPhone"
+                                maxlength="30"
+                                autocomplete="tel">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserLicenseNumber">Professional license no.</label>
+                            <input
+                                type="text"
+                                id="vetUserLicenseNumber"
+                                maxlength="100">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vetUserPosition">Position</label>
+                            <input
+                                type="text"
+                                id="vetUserPosition"
+                                maxlength="120">
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="vetUserAddress">Current address</label>
+                        <textarea
+                            id="vetUserAddress"
+                            rows="2"
+                            maxlength="250"></textarea>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="vetUserPermanentAddress">Permanent address</label>
+                        <textarea
+                            id="vetUserPermanentAddress"
+                            rows="2"
+                            maxlength="250"></textarea>
+                    </div>
+
+                    <p
+                        id="vetUserFormMessage"
+                        class="message"
+                        role="status"
+                        aria-live="polite"></p>
+                </form>
+            </div>
+
+            <div class="smartvet-modal-footer">
+                <button
+                    type="submit"
+                    form="vetUserForm"
+                    class="primary"
+                    id="saveVetUserButton">
+                    Save User
+                </button>
+            </div>
+        </dialog>
+
+        <!-- RESET STAFF PASSWORD MODAL -->
+        <dialog id="vetPasswordDialog" class="smartvet-modal smartvet-modal-history">
+            <div class="smartvet-modal-header">
+                <span class="smartvet-modal-icon smartvet-modal-icon-history" aria-hidden="true">🔑</span>
+
+                <div class="smartvet-modal-title">
+                    <p class="page-eyebrow">ACCESS CONTROL</p>
+                    <h2>Reset Password</h2>
+                    <p id="vetPasswordDialogSubtitle" class="muted">Selected user</p>
+                </div>
+
+                <button
+                    type="button"
+                    class="secondary smartvet-modal-close"
+                    data-close-dialog="vetPasswordDialog"
+                    aria-label="Close password form">
+                    Close
+                </button>
+            </div>
+
+            <div class="smartvet-modal-body">
+                <form id="vetPasswordForm">
+                    <div class="form-group">
+                        <label for="vetNewPassword">New password *</label>
+                        <input
+                            type="password"
+                            id="vetNewPassword"
+                            minlength="8"
+                            maxlength="72"
+                            autocomplete="new-password"
+                            required>
+                        <p class="muted">Minimum 8 characters.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vetPasswordMustChange">
+                            Require a password change at the next sign-in
+                        </label>
+                        <select id="vetPasswordMustChange">
+                            <option value="true">Required</option>
+                            <option value="false">Not required</option>
+                        </select>
+                    </div>
+
+                    <p
+                        id="vetPasswordMessage"
+                        class="message"
+                        role="status"
+                        aria-live="polite"></p>
+                </form>
+            </div>
+
+            <div class="smartvet-modal-footer">
+                <button
+                    type="submit"
+                    form="vetPasswordForm"
+                    class="primary"
+                    id="saveVetPasswordButton">
+                    Update Password
+                </button>
+            </div>
+        </dialog>
     </main>
 </div>
 

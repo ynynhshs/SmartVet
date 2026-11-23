@@ -7,6 +7,7 @@ const { body, param, validationResult } = require('express-validator');
 const Device = require('../models/Device');
 const Pet = require('../models/Pet');
 const AuditLog = require('../models/AuditLog');
+const { attachActors } = require('../services/actorService');
 
 const {
     requireAuth,
@@ -17,7 +18,7 @@ const router = express.Router();
 
 // Every device-management endpoint requires an authenticated
 // veterinary user.
-router.use(requireAuth, authorizeRoles('veterinary'));
+router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
 function validateRequest(req, res) {
     const errors = validationResult(req);
@@ -226,10 +227,11 @@ router.get('/', async (req, res, next) => {
     try {
         const devices = await Device.find({})
             .populate('petId', 'name petCode species')
-            .populate('createdBy', 'fullName')
             .sort({ createdAt: -1 })
             .limit(200)
             .lean();
+
+        await attachActors(devices, 'createdBy');
 
         return res.status(200).json({
             success: true,
@@ -315,8 +317,9 @@ router.patch(
 
             const updatedDevice = await Device.findById(device._id)
                 .populate('petId', 'name petCode species')
-                .populate('createdBy', 'fullName')
                 .lean();
+
+            await attachActors([updatedDevice], 'createdBy');
 
             return res.status(200).json({
                 success: true,

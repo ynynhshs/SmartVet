@@ -7,6 +7,7 @@ const FeedingSchedule = require('../models/FeedingSchedule');
 const Device = require('../models/Device');
 const Pet = require('../models/Pet');
 const AuditLog = require('../models/AuditLog');
+const { attachActors } = require('../services/actorService');
 
 const {
     requireAuth,
@@ -16,7 +17,7 @@ const {
 const router = express.Router();
 
 // Only authenticated veterinary personnel can configure schedules.
-router.use(requireAuth, authorizeRoles('veterinary'));
+router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
 function validateRequest(req, res) {
     const errors = validationResult(req);
@@ -77,10 +78,11 @@ router.get('/', async (req, res, next) => {
         const schedules = await FeedingSchedule.find({})
             .populate('petId', 'name petCode species')
             .populate('deviceId', 'deviceCode deviceType status')
-            .populate('createdBy', 'fullName')
             .sort({ createdAt: -1 })
             .limit(200)
             .lean();
+
+        await attachActors(schedules, 'createdBy');
 
         return res.status(200).json({
             success: true,
@@ -216,8 +218,9 @@ router.post(
             const result = await FeedingSchedule.findById(schedule._id)
                 .populate('petId', 'name petCode species')
                 .populate('deviceId', 'deviceCode deviceType status')
-                .populate('createdBy', 'fullName')
                 .lean();
+
+            await attachActors([result], 'createdBy');
 
             return res.status(201).json({
                 success: true,

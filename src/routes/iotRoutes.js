@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 
 const Pet = require('../models/Pet');
-const User = require('../models/User');
+const VeterinaryUser = require('../models/VeterinaryUser');
 const FeedingSchedule = require('../models/FeedingSchedule');
 const FeedingEvent = require('../models/FeedingEvent');
 const ActivityRecord = require('../models/ActivityRecord');
@@ -211,9 +211,9 @@ router.post(
                     });
                 }
 
-                const veterinaryUser = await User.findOne({
+                const veterinaryUser = await VeterinaryUser.findOne({
                     _id: req.body.triggeredBy,
-                    role: 'veterinary',
+                    role: { $in: ['veterinarian', 'veterinary_staff'] },
                     status: 'active'
                 }).select('_id');
 

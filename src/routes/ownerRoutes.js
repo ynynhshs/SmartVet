@@ -15,6 +15,7 @@ const Notification = require('../models/Notification');
 const PushSubscription = require('../models/PushSubscription');
 const FeedingEvent = require('../models/FeedingEvent');
 const ActivityRecord = require('../models/ActivityRecord');
+const { attachActors } = require('../services/actorService');
 
 const {
     requireAuth,
@@ -529,10 +530,11 @@ router.get('/vaccinations', async (req, res, next) => {
             ? await VaccinationRecord.find({
                 petId: { $in: pets.map((pet) => pet._id) }
             })
-                .populate('administeredBy', 'fullName')
                 .sort({ nextDueDate: 1, administeredDate: -1 })
                 .lean()
             : [];
+
+        await attachActors(records, 'administeredBy');
 
         return res.status(200).json({
             success: true,
@@ -651,9 +653,10 @@ router.get('/pets/:petId/vaccinations', async (req, res, next) => {
             return res.status(404).json({ success: false, message: 'Approved pet not found in your account.' });
         }
         const records = await VaccinationRecord.find({ petId: pet._id })
-            .populate('administeredBy', 'fullName')
             .sort({ administeredDate: -1, createdAt: -1 })
             .lean();
+
+        await attachActors(records, 'administeredBy');
 
         return res.status(200).json({
             success: true,

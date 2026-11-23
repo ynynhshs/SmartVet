@@ -2768,3 +2768,181 @@ body[data-theme="dark"] .qr-vaccination-history-card {
     }
 }
 
+
+/* ==========================================
+   VETERINARY ADMINISTRATION
+   User management, system settings, global device
+   registry, and system audit logs.
+   ========================================== */
+
+.admin-stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    gap: 16px;
+    margin: 4px 0 24px;
+}
+
+.admin-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px 22px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 22px;
+    background: var(--clay-surface-card);
+    box-shadow: var(--clay-shadow-sm);
+}
+
+.admin-stat-card strong {
+    color: var(--clay-heading);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.admin-stat-card span {
+    color: var(--clay-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* Administrator tables */
+.admin-table {
+    margin: 0;
+}
+
+.admin-table th,
+.admin-table td {
+    vertical-align: middle;
+}
+
+.admin-table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-table-actions button {
+    min-height: 38px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+}
+
+.admin-table-action {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+/* Toolbar with filters on the right */
+.section-heading.admin-table-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.admin-table-filters {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.admin-table-filters .form-group {
+    min-width: 150px;
+}
+
+.admin-table-filters .secondary {
+    min-height: 48px;
+}
+
+/* Administrator modal form density */
+.smartvet-modal-body .form-grid {
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.smartvet-modal-body .form-group label span {
+    color: var(--clay-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    .admin-table-filters .form-group {
+        flex: 1 1 140px;
+    }
+}
+
+@media (max-width: 700px) {
+    .section-heading.admin-table-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-table-filters {
+        width: 100%;
+    }
+
+    .admin-table-filters .form-group {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .admin-table-filters .secondary {
+        width: 100%;
+    }
+
+    /* Tables become stacked cards so nothing overflows the mobile shell. */
+    .admin-table thead {
+        display: none;
+    }
+
+    .admin-table,
+    .admin-table tbody,
+    .admin-table tr,
+    .admin-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-table tr {
+        margin-bottom: 14px;
+        padding: 16px;
+        border: 1px solid rgba(120, 140, 165, 0.28);
+        border-radius: 18px;
+        background: var(--clay-surface-card);
+    }
+
+    .admin-table td {
+        padding: 4px 0;
+        border: 0;
+    }
+
+    .admin-table td::before {
+        content: attr(data-label);
+        display: block;
+        color: var(--clay-muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .admin-table-actions {
+        margin-top: 8px;
+    }
+}
+
+body[data-theme="dark"] .admin-stat-card {
+    background: var(--clay-surface-card);
+    border-color: #2b3d53;
+}
+
+body[data-theme="dark"] .admin-table tr {
+    background: var(--clay-surface-card);
+    border-color: #2b3d53;
+}

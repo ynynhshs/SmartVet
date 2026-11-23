@@ -11,6 +11,7 @@ const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
 const VaccineInventory = require('../models/VaccineInventory');
 const { clinicDateString } = require('../utils/clinicDate');
+const { attachActors } = require('../services/actorService');
 
 const {
     requireAuth,
@@ -20,7 +21,7 @@ const {
 const router = express.Router();
 
 // All routes in this file require a logged-in veterinary user.
-router.use(requireAuth, authorizeRoles('veterinary'));
+router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
 // Serve a pet photo only to authenticated veterinary staff.
 router.get('/pets/:petId/photo', async (req, res, next) => {
@@ -273,11 +274,13 @@ router.get('/dashboard-overview', async (req, res, next) => {
             ]),
 
             AuditLog.find({})
-                .populate('actorUserId', 'fullName')
                 .sort({ createdAt: -1 })
                 .limit(10)
                 .lean()
         ]);
+
+        // Audit actors are veterinary staff, resolved across collections.
+        await attachActors(recentLogs, 'actorUserId');
 
         const attentionPetIds = [
             ...new Set(
@@ -445,10 +448,11 @@ router.get('/reports', async (req, res, next) => {
                 dateFilter(dateField)
             )
                 .populate('petId', 'petCode name species')
-                .populate('administeredBy', 'fullName')
                 .sort({ [dateField]: reportType === 'followups' ? 1 : -1 })
                 .limit(5001)
                 .lean();
+
+            await attachActors(records, 'administeredBy');
             rows = records.map((record) => [
                 record.petId?.petCode || '',
                 record.petId?.name || '',
@@ -1196,9 +1200,10 @@ router.get('/pets/:petId/vaccinations', async (req, res, next) => {
         const records = await VaccinationRecord.find({
             petId: pet._id
         })
-            .populate('administeredBy', 'fullName')
             .sort({ administeredDate: -1, createdAt: -1 })
             .lean();
+
+        await attachActors(records, 'administeredBy');
 
         return res.status(200).json({
             success: true,

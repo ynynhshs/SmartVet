@@ -7,6 +7,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
 
 const User = require('../models/User');
+const VeterinaryUser = require('../models/VeterinaryUser');
 const {
     hashPassword,
     comparePassword,
@@ -91,6 +92,64 @@ const pinResetLimiter = rateLimit({
     message: { success: false, message: 'Too many PIN reset attempts. Please try again later.' }
 });
 
+// POST /api/auth/veterinary/login
+// Veterinary staff sign-in. The owner collection is never consulted here, so
+// an owner account cannot open the clinic workspace.
+router.post(
+    '/veterinary/login',
+    loginLimiter,
+    [
+        body('email').isString().trim().isEmail(),
+        body('password').isString().notEmpty().custom((p) => Buffer.byteLength(p, 'utf8') <= 72)
+    ],
+    async (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, message: 'Please provide a valid email and password.' });
+        }
+
+        const email = req.body.email.trim().toLowerCase();
+        const password = req.body.password;
+
+        try {
+            const account = await VeterinaryUser.findByEmailWithPassword(email);
+
+            // One generic message so the endpoint cannot be used to discover
+            // which staff accounts exist or are disabled.
+            const passwordIsValid = account && account.status === 'active'
+                ? await comparePassword(password, account.passwordHash)
+                : false;
+
+            if (!account || !passwordIsValid) {
+                return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+            }
+
+            const accessToken = createAccessToken({ _id: account._id });
+            account.lastLoginAt = new Date();
+            await account.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Login successful.',
+                tokenType: 'Bearer',
+                accessToken,
+                expiresIn: process.env.JWT_EXPIRES_IN || '1h',
+                user: {
+                    id: account._id.toString(),
+                    fullName: account.fullName,
+                    email: account.email,
+                    role: account.role,
+                    status: account.status,
+                    mustChangePassword: Boolean(account.mustChangePassword),
+                    hasPin: false
+                }
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+);
+
 // POST /api/auth/register
 router.post(
     '/register',
@@ -127,8 +186,14 @@ router.post(
         const email = req.body.email.trim().toLowerCase();
         
         try {
-            const existingUser = await User.findOne({ email }).lean();
-            if (existingUser) {
+            // Emails are unique across both sign-in collections, so an owner
+            // cannot register an address that belongs to a staff account.
+            const [existingUser, existingStaff] = await Promise.all([
+                User.findOne({ email }).lean(),
+                VeterinaryUser.findOne({ email }).select('_id').lean()
+            ]);
+
+            if (existingUser || existingStaff) {
                 return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
             }
 

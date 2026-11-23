@@ -3,11 +3,14 @@ const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema(
     {
-        // User who performed the action.
-        // Can be empty for system-generated events.
+        // Staff member who performed the action.
+        // Can be empty for device-generated events.
+        //
+        // The id belongs to the `VeterinaryUser` collection. Resolve it with
+        // `attachActors` from `src/services/actorService.js` rather than
+        // `populate`, because a `ref` can only name one collection.
         actorUserId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
             default: undefined,
             index: true
         },

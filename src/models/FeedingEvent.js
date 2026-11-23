@@ -93,10 +93,11 @@ const feedingEventSchema = new mongoose.Schema(
             }
         },
 
-        // Veterinary user who requested a manual feeding, if applicable.
+        // Staff member who requested a manual feeding, if applicable. The id
+        // belongs to the `VeterinaryUser` collection; resolve it with
+        // `attachActors`.
         triggeredBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
             default: undefined
         },
 

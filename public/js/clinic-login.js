@@ -52,7 +52,7 @@ clinicLoginForm.addEventListener('submit', async (event) => {
     const password = document.getElementById('clinicPassword').value;
 
     try {
-        const data = await requestJson('/api/auth/login', {
+        const data = await requestJson('/api/auth/veterinary/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -61,7 +61,10 @@ clinicLoginForm.addEventListener('submit', async (event) => {
             body: JSON.stringify({ email, password })
         });
 
-        if (!data.user || data.user.role !== 'veterinary') {
+        if (
+            !data.user ||
+            !['veterinarian', 'veterinary_staff'].includes(data.user.role)
+        ) {
             throw new Error(
                 'This page is for veterinary staff accounts. Please use the owner portal sign in.'
             );

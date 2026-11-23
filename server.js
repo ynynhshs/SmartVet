@@ -51,7 +51,9 @@ app.use(express.json({ limit: '10kb' }));
 app.use('/api/auth', authRoutes);
 
 // Role-protected API areas.
-app.use('/api/admin', adminRoutes);
+// Administrator endpoints live under the clinic area because they
+// require a veterinary account; see src/routes/adminRoutes.js.
+app.use('/api/clinic/admin', adminRoutes);
 app.use('/api/clinic/devices', deviceRoutes);
 app.use('/api/clinic/vaccine-inventory', vaccineInventoryRoutes);
 app.use('/api/clinic/feeding-schedules', feedingScheduleRoutes);

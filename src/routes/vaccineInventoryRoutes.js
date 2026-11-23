@@ -6,7 +6,7 @@ const VaccineInventory = require('../models/VaccineInventory');
 const { requireAuth, authorizeRoles } = require('../middleware/authMiddleware');
 
 const router = express.Router();
-router.use(requireAuth, authorizeRoles('veterinary'));
+router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
 function inventoryPayload(item) {
     const stockQuantity = item.stockQuantity;

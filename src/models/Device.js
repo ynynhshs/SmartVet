@@ -75,10 +75,12 @@ const deviceSchema = new mongoose.Schema(
             default: ''
         },
 
-        // User who registered the device in SmartVet.
+        // Staff member who registered the device in SmartVet.
+        // // The id belongs to the `VeterinaryUser` collection; resolve it with
+        // `attachActors` from `src/services/actorService.js`, because a Mongoose
+        // `ref` can only name one collection.
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
             required: [true, 'Registering user is required.']
         }
     },

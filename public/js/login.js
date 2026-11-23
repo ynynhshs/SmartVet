@@ -46,7 +46,6 @@ const pinMessage = document.getElementById('pinMessage');
 const pinAccountName = document.getElementById('pinAccountName');
 const pinAccountEmail = document.getElementById('pinAccountEmail');
 const unlockWithPinButton = document.getElementById('unlockWithPinButton');
-const pinKeypad = document.getElementById('pinKeypad');
 
 // The saved account is what lets the app skip the email/password form.
 let pinAccount = SmartVetSession.getPinAccount();
@@ -157,8 +156,11 @@ function showRegisterView() {
 
 function showPinView() {
     pinMessage.textContent = '';
-    clearPinValue();
     showView('pin');
+
+    // Focus after the view is visible: focusing a box inside a hidden view
+    // silently does nothing, and the phone's numeric keypad needs focus.
+    clearPinValue();
 }
 
 function openForgotPinView() {
@@ -264,28 +266,6 @@ if (registerAvatarPreview) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             openPhotoPicker();
-        }
-    });
-}
-
-// PIN keypad writes into the six boxes; typing on a keyboard works too.
-if (pinKeypad) {
-    pinKeypad.addEventListener('click', (event) => {
-        const digitButton = event.target.closest('[data-pin-digit]');
-        const backspaceButton = event.target.closest('[data-pin-backspace]');
-
-        if (digitButton) {
-            pinMessage.textContent = '';
-
-            if (pinBoxes) {
-                pinBoxes.append(digitButton.dataset.pinDigit);
-            }
-
-            return;
-        }
-
-        if (backspaceButton && pinBoxes) {
-            pinBoxes.backspace();
         }
     });
 }

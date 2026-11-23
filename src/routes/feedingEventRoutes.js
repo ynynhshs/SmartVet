@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 
 const FeedingEvent = require('../models/FeedingEvent');
+const { attachActors } = require('../services/actorService');
 
 const {
     requireAuth,
@@ -11,7 +12,7 @@ const {
 const router = express.Router();
 
 // Only authenticated veterinary staff can view feeding history.
-router.use(requireAuth, authorizeRoles('veterinary'));
+router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
 const allowedStatuses = [
     'running',
@@ -66,10 +67,11 @@ router.get('/', async (req, res, next) => {
                 'scheduleId',
                 'timeOfDay daysOfWeek amountGrams timezone isActive'
             )
-            .populate('triggeredBy', 'fullName')
             .sort({ startedAt: -1 })
             .limit(200)
             .lean();
+
+        await attachActors(records, 'triggeredBy');
 
         const events = records.map((event) => ({
             id: event._id.toString(),

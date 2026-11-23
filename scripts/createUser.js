@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 
 const connectDB = require('../src/config/db');
 const User = require('../src/models/User');
+const VeterinaryUser = require('../src/models/VeterinaryUser');
 const { hashPassword } = require('../src/services/authService');
 
 const rl = readline.createInterface({
@@ -74,19 +75,21 @@ function askHidden(question) {
 async function createUser() {
     try {
         console.log('\n=== SmartVet Account Setup ===');
-        console.log('Allowed roles: veterinary, owner\n');
+        console.log('Allowed roles: owner, veterinarian, veterinary_staff\n');
 
         const fullName = await ask('Full name: ');
         const email = (await ask('Email address: ')).toLowerCase();
         const phone = await ask('Phone number (optional): ');
 
         const role = (await ask(
-            'Account role (veterinary/owner): '
+            'Account role (owner/veterinarian/veterinary_staff): '
         )).toLowerCase();
 
-        if (!['veterinary', 'owner'].includes(role)) {
+        const allowedRoles = ['owner', 'veterinarian', 'veterinary_staff'];
+
+        if (!allowedRoles.includes(role)) {
             throw new Error(
-                'Invalid role. Only veterinary or owner is allowed.'
+                `Invalid role. Allowed roles: ${allowedRoles.join(', ')}.`
             );
         }
 
@@ -98,9 +101,13 @@ async function createUser() {
             throw new Error('Please enter a valid email address.');
         }
 
-        const existingUser = await User.findOne({ email });
+        // Emails are unique across both sign-in collections.
+        const [existingOwner, existingStaff] = await Promise.all([
+            User.findOne({ email }).select('_id'),
+            VeterinaryUser.findOne({ email }).select('_id')
+        ]);
 
-        if (existingUser) {
+        if (existingOwner || existingStaff) {
             throw new Error(
                 'An account with that email address already exists.'
             );
@@ -115,21 +122,35 @@ async function createUser() {
 
         const passwordHash = await hashPassword(password);
 
-        const user = await User.create({
-            fullName,
-            email,
-            phone,
-            passwordHash,
-            role,
-            status: 'active'
-        });
+        // Owners and clinic staff are stored in separate collections and
+        // sign in on separate pages.
+        const account =
+            role === 'owner'
+                ? await User.create({
+                    fullName,
+                    email,
+                    phone,
+                    passwordHash,
+                    role,
+                    status: 'active'
+                })
+                : await VeterinaryUser.create({
+                    fullName,
+                    email,
+                    phone,
+                    passwordHash,
+                    role,
+                    status: 'active'
+                });
 
         console.log('\nAccount created successfully.');
-        console.log(`Name: ${user.fullName}`);
-        console.log(`Email: ${user.email}`);
-        console.log(`Role: ${user.role}`);
-        console.log(`Status: ${user.status}`);
-        console.log(`User ID: ${user._id}`);
+        console.log(`Name: ${account.fullName}`);
+        console.log(`Email: ${account.email}`);
+        console.log(`Role: ${account.role}`);
+        console.log(`Status: ${account.status}`);
+        console.log(`Collection: ${role === 'owner' ? 'users' : 'veterinaryusers'}`);
+        console.log(`Sign in: ${role === 'owner' ? '/login.html' : '/clinic/login.html'}`);
+        console.log(`User ID: ${account._id}`);
     } finally {
         rl.close();
     }

@@ -170,7 +170,11 @@ const views = {
     qrScanner: document.getElementById('qrScannerSection'),
     devices: document.getElementById('devicesSection'),
     inventory: document.getElementById('inventorySection'),
-    reports: document.getElementById('reportsSection')
+    reports: document.getElementById('reportsSection'),
+    userManagement: document.getElementById('userManagementSection'),
+    settings: document.getElementById('settingsSection'),
+    deviceRegistry: document.getElementById('deviceRegistrySection'),
+    auditLogs: document.getElementById('auditLogsSection')
 };
 
 let dashboardReady = false;
@@ -397,6 +401,22 @@ if (viewName === 'devices') {
 
     if (viewName === 'reports') {
         loadClinicReport();
+    }
+
+    if (viewName === 'userManagement') {
+        loadVeterinaryUsers();
+    }
+
+    if (viewName === 'settings') {
+        loadSystemSettings();
+    }
+
+    if (viewName === 'deviceRegistry') {
+        loadDeviceRegistry();
+    }
+
+    if (viewName === 'auditLogs') {
+        loadAuditLogs();
     }
 
 }
@@ -2951,21 +2971,35 @@ async function verifyVeterinarySession() {
         const data = await apiRequest('/api/auth/me');
         const user = data.user || data;
 
-        if (user.role !== 'veterinary') {
+        const administratorRoles = ['veterinarian', 'veterinary_staff'];
+
+        if (!administratorRoles.includes(user.role)) {
             logout();
             return;
         }
+
+        const isAdministrator = user.role === 'veterinarian';
+
+        // Administrator-only navigation stays hidden for veterinary staff, and
+        // so do the sections behind it, so no stale panel can be revealed.
+        document.querySelectorAll('[data-administrator-only]').forEach((node) => {
+            node.hidden = !isAdministrator;
+        });
 
         welcomeHeading.textContent =
             `Welcome, ${user.fullName || 'Veterinary Staff'}`;
 
         showMessage(
             sessionMessage,
-            'Signed in as veterinary staff.',
+            isAdministrator
+                ? 'Signed in as the veterinary administrator.'
+                : 'Signed in as veterinary staff.',
             'success'
         );
 
-        sessionBadge.textContent = 'Session verified';
+        sessionBadge.textContent = isAdministrator
+            ? 'Administrator session'
+            : 'Session verified';
         sessionBadge.classList.add('is-verified');
 
         dashboardReady = true;
@@ -3110,6 +3144,879 @@ if (copyDeviceTokenButton) {
         document.body.classList.remove('theme-transitioning');
     }, 400);
 });
+})();
+
+
+/* ===========================================================================
+   VETERINARY ADMINISTRATION
+   User management, system settings, the global IoT device registry, and the
+   system audit trail. Every area here is gated twice: the sidebar items and
+   sections stay hidden for veterinary_staff, and every endpoint additionally
+   requires the veterinarian role.
+   =========================================================================== */
+
+const ADMINISTRATOR_ONLY_ROLES = ['veterinarian'];
+
+// --- User management elements -------------------------------------------
+const vetUsersTableBody = document.getElementById('vetUsersTableBody');
+const vetUsersMessage = document.getElementById('vetUsersMessage');
+const refreshVetUsersButton = document.getElementById('refreshVetUsersButton');
+const addVetUserButton = document.getElementById('addVetUserButton');
+
+const vetUserDialog = document.getElementById('vetUserDialog');
+const vetUserForm = document.getElementById('vetUserForm');
+const vetUserDialogTitle = document.getElementById('vetUserDialogTitle');
+const vetUserDialogSubtitle = document.getElementById('vetUserDialogSubtitle');
+const vetUserFormMessage = document.getElementById('vetUserFormMessage');
+const saveVetUserButton = document.getElementById('saveVetUserButton');
+const vetUserPasswordHint = document.getElementById('vetUserPasswordHint');
+
+const vetPasswordDialog = document.getElementById('vetPasswordDialog');
+const vetPasswordForm = document.getElementById('vetPasswordForm');
+const vetPasswordDialogSubtitle = document.getElementById('vetPasswordDialogSubtitle');
+const vetPasswordMessage = document.getElementById('vetPasswordMessage');
+const saveVetPasswordButton = document.getElementById('saveVetPasswordButton');
+
+// --- System settings elements -------------------------------------------
+const clinicSettingsForm = document.getElementById('clinicSettingsForm');
+const systemSettingsMessage = document.getElementById('systemSettingsMessage');
+const saveSystemSettingsButton = document.getElementById('saveSystemSettingsButton');
+
+const systemSettingFields = [
+    'clinicName', 'clinicEmail', 'clinicPhone', 'clinicAddress',
+    'requirePetVerification', 'allowOwnerRegistration', 'allowOwnerPinUnlock',
+    'reminderEnabled', 'reminderDaysBefore', 'deviceTelemetryEnabled',
+    'maxLoginAttempts', 'sessionTimeoutMinutes'
+];
+
+// --- Device registry elements -------------------------------------------
+const deviceRegistryTableBody = document.getElementById('deviceRegistryTableBody');
+const deviceRegistryMessage = document.getElementById('deviceRegistryMessage');
+const deviceRegistryStats = document.getElementById('deviceRegistryStats');
+const refreshDeviceRegistryButton = document.getElementById('refreshDeviceRegistryButton');
+const deviceRegistryStatusFilter = document.getElementById('deviceRegistryStatusFilter');
+const deviceRegistryTypeFilter = document.getElementById('deviceRegistryTypeFilter');
+
+// --- Audit log elements --------------------------------------------------
+const auditLogsTableBody = document.getElementById('auditLogsTableBody');
+const auditLogsMessage = document.getElementById('auditLogsMessage');
+const auditOverviewStats = document.getElementById('auditOverviewStats');
+const refreshAuditLogsButton = document.getElementById('refreshAuditLogsButton');
+const auditActionFilter = document.getElementById('auditActionFilter');
+const auditEntityTypeFilter = document.getElementById('auditEntityTypeFilter');
+const auditSourceFilter = document.getElementById('auditSourceFilter');
+const applyAuditFiltersButton = document.getElementById('applyAuditFiltersButton');
+
+// The user id embedded in the signed-in administrator's token.
+const currentAdministratorId = SmartVetSession.getUser()?.id || '';
+
+const ADMIN_ROLE_LABELS = {
+    veterinarian: 'Veterinarian (Administrator)',
+    veterinary_staff: 'Veterinary Staff'
+};
+
+let veterinaryUsers = [];
+
+function adminRoleLabel(role) {
+    return ADMIN_ROLE_LABELS[role] || role || 'Unknown';
+}
+
+// True when the signed-in account may use the administration areas.
+function isAdministratorSession() {
+    const user = SmartVetSession.getUser();
+    return Boolean(user && ADMINISTRATOR_ONLY_ROLES.includes(user.role));
+}
+
+function openAdminDialog(dialog) {
+    if (!dialog) return;
+
+    if (typeof dialog.showModal === 'function') {
+        dialog.showModal();
+    } else {
+        dialog.setAttribute('open', '');
+    }
+}
+
+function closeAdminDialog(dialog) {
+    if (!dialog) return;
+
+    if (typeof dialog.close === 'function') {
+        dialog.close();
+    } else {
+        dialog.removeAttribute('open');
+    }
+}
+
+document.querySelectorAll('[data-close-dialog]').forEach((button) => {
+    button.addEventListener('click', () => {
+        closeAdminDialog(document.getElementById(button.dataset.closeDialog));
+    });
+});
+
+function setAdminSelectValue(select, value) {
+    if (!select) return;
+
+    const stringValue = value === null || value === undefined ? '' : String(value);
+
+    select.value = stringValue;
+
+    // Fall back to the first option when the stored value is not offered.
+    if (select.value !== stringValue) {
+        select.selectedIndex = 0;
+    }
+}
+
+function textCell(tableRow, value, className = '', label = '') {
+    const cell = document.createElement('td');
+
+    if (className) {
+        cell.className = className;
+    }
+
+    if (label) {
+        cell.dataset.label = label;
+    }
+
+    cell.textContent = value || 'Not provided';
+    tableRow.appendChild(cell);
+
+    return cell;
+}
+
+/* --- User management ----------------------------------------------------- */
+
+function renderVeterinaryUsers() {
+    if (!vetUsersTableBody) return;
+
+    vetUsersTableBody.replaceChildren();
+
+    if (veterinaryUsers.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+
+        cell.colSpan = 6;
+        cell.className = 'muted';
+        cell.textContent = 'No veterinary staff accounts have been created yet.';
+
+        row.appendChild(cell);
+        vetUsersTableBody.appendChild(row);
+        return;
+    }
+
+    veterinaryUsers.forEach((user) => {
+        const row = document.createElement('tr');
+
+        textCell(row, user.fullName, '', 'Name');
+        textCell(row, user.email, '', 'Email');
+        textCell(row, adminRoleLabel(user.role), '', 'Role');
+
+        const statusCell = document.createElement('td');
+        const status = document.createElement('span');
+
+        status.className = `device-status device-status-${user.status === 'active' ? 'active' : 'revoked'}`;
+        status.textContent = user.status === 'active' ? 'Active' : 'Disabled';
+        statusCell.dataset.label = 'Status';
+        statusCell.appendChild(status);
+        row.appendChild(statusCell);
+
+        textCell(
+            row,
+            user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never signed in',
+            '',
+            'Last Sign-in'
+        );
+
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'admin-table-actions';
+        actionsCell.dataset.label = 'Actions';
+
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'secondary';
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => openVetUserDialog(user));
+        actionsCell.appendChild(editButton);
+
+        const passwordButton = document.createElement('button');
+        passwordButton.type = 'button';
+        passwordButton.className = 'secondary';
+        passwordButton.textContent = 'Reset Password';
+        passwordButton.addEventListener('click', () => openVetPasswordDialog(user));
+        actionsCell.appendChild(passwordButton);
+
+        if (user.id !== currentAdministratorId) {
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'secondary';
+            deleteButton.textContent = 'Delete';
+            deleteButton.addEventListener('click', () => deleteVeterinaryUser(user));
+            actionsCell.appendChild(deleteButton);
+        }
+
+        row.appendChild(actionsCell);
+        vetUsersTableBody.appendChild(row);
+    });
+}
+
+async function loadVeterinaryUsers() {
+    if (!dashboardReady || !vetUsersTableBody) return;
+
+    vetUsersTableBody.replaceChildren();
+
+    const loadingRow = document.createElement('tr');
+    const loadingCell = document.createElement('td');
+
+    loadingCell.colSpan = 6;
+    loadingCell.className = 'muted';
+    loadingCell.textContent = 'Loading staff accounts...';
+
+    loadingRow.appendChild(loadingCell);
+    vetUsersTableBody.appendChild(loadingRow);
+
+    if (refreshVetUsersButton) refreshVetUsersButton.disabled = true;
+
+    try {
+        const data = await apiRequest('/api/clinic/admin/users');
+
+        veterinaryUsers = Array.isArray(data.users) ? data.users : [];
+        renderVeterinaryUsers();
+
+        if (vetUsersMessage) {
+            showMessage(vetUsersMessage, '', '');
+        }
+    } catch (error) {
+        veterinaryUsers = [];
+        renderVeterinaryUsers();
+
+        if (vetUsersMessage) {
+            showMessage(vetUsersMessage, error.message, 'error');
+        }
+    } finally {
+        if (refreshVetUsersButton) refreshVetUsersButton.disabled = false;
+    }
+}
+
+function openVetUserDialog(user = null) {
+    if (!vetUserForm) return;
+
+    vetUserForm.reset();
+    vetUserFormMessage.textContent = '';
+    vetUserFormMessage.className = 'message';
+
+    const isEdit = Boolean(user);
+
+    vetUserDialogTitle.textContent = isEdit ? 'Edit User' : 'Add User';
+    vetUserDialogSubtitle.textContent = isEdit
+        ? user.email
+        : 'The account signs in at the veterinary portal.';
+
+    // A password is only required when the account is first created.
+    const passwordInput = document.getElementById('vetUserPassword');
+
+    passwordInput.required = !isEdit;
+    vetUserPasswordHint.textContent = isEdit
+        ? 'Leave blank to keep the current password.'
+        : 'Minimum 8 characters.';
+
+    document.getElementById('vetUserFullName').value = user?.fullName || '';
+    document.getElementById('vetUserEmail').value = user?.email || '';
+    setAdminSelectValue(document.getElementById('vetUserRole'), user?.role || 'veterinary_staff');
+    setAdminSelectValue(document.getElementById('vetUserStatus'), user?.status || 'active');
+    setAdminSelectValue(
+        document.getElementById('vetUserMustChangePassword'),
+        user ? String(Boolean(user.mustChangePassword)) : 'false'
+    );
+
+    document.getElementById('vetUserDateOfBirth').value =
+        user?.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : '';
+    setAdminSelectValue(document.getElementById('vetUserGender'), user?.gender || '');
+    setAdminSelectValue(document.getElementById('vetUserCivilStatus'), user?.civilStatus || '');
+    document.getElementById('vetUserNationality').value = user?.nationality || '';
+    document.getElementById('vetUserGovId').value = user?.govId || '';
+    setAdminSelectValue(document.getElementById('vetUserOccupation'), user?.occupation || '');
+    document.getElementById('vetUserPhone').value = user?.phone || '';
+    document.getElementById('vetUserLicenseNumber').value = user?.licenseNumber || '';
+    document.getElementById('vetUserPosition').value = user?.position || '';
+    document.getElementById('vetUserAddress').value = user?.address || '';
+    document.getElementById('vetUserPermanentAddress').value = user?.permanentAddress || '';
+
+    vetUserForm.dataset.userId = isEdit ? user.id : '';
+
+    openAdminDialog(vetUserDialog);
+}
+
+async function submitVeterinaryUser(event) {
+    event.preventDefault();
+
+    const userId = vetUserForm.dataset.userId || '';
+    const password = document.getElementById('vetUserPassword').value;
+
+    if (!userId && password.length < 8) {
+        vetUserFormMessage.textContent = 'Password must be at least 8 characters.';
+        vetUserFormMessage.className = 'message error';
+        return;
+    }
+
+    const payload = {
+        fullName: document.getElementById('vetUserFullName').value.trim(),
+        email: document.getElementById('vetUserEmail').value.trim(),
+        role: document.getElementById('vetUserRole').value,
+        status: document.getElementById('vetUserStatus').value,
+        mustChangePassword: document.getElementById('vetUserMustChangePassword').value === 'true',
+        dateOfBirth: document.getElementById('vetUserDateOfBirth').value || null,
+        gender: document.getElementById('vetUserGender').value,
+        civilStatus: document.getElementById('vetUserCivilStatus').value,
+        nationality: document.getElementById('vetUserNationality').value.trim(),
+        govId: document.getElementById('vetUserGovId').value.trim(),
+        occupation: document.getElementById('vetUserOccupation').value,
+        phone: document.getElementById('vetUserPhone').value.trim(),
+        licenseNumber: document.getElementById('vetUserLicenseNumber').value.trim(),
+        position: document.getElementById('vetUserPosition').value.trim(),
+        address: document.getElementById('vetUserAddress').value.trim(),
+        permanentAddress: document.getElementById('vetUserPermanentAddress').value.trim()
+    };
+
+    if (password) {
+        payload.password = password;
+    }
+
+    saveVetUserButton.disabled = true;
+
+    try {
+        if (userId) {
+            await apiRequest(`/api/clinic/admin/users/${encodeURIComponent(userId)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(payload)
+            });
+        } else {
+            await apiRequest('/api/clinic/admin/users', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+        }
+
+        closeAdminDialog(vetUserDialog);
+        await loadVeterinaryUsers();
+
+        if (vetUsersMessage) {
+            showMessage(
+                vetUsersMessage,
+                userId ? 'User account updated.' : 'User account created.',
+                'success'
+            );
+        }
+    } catch (error) {
+        vetUserFormMessage.textContent = error.message;
+        vetUserFormMessage.className = 'message error';
+    } finally {
+        saveVetUserButton.disabled = false;
+    }
+}
+
+function openVetPasswordDialog(user) {
+    if (!vetPasswordForm || !user) return;
+
+    vetPasswordForm.reset();
+    vetPasswordMessage.textContent = '';
+    vetPasswordMessage.className = 'message';
+    vetPasswordDialogSubtitle.textContent = `${user.fullName} (${user.email})`;
+    setAdminSelectValue(document.getElementById('vetPasswordMustChange'), 'true');
+    vetPasswordForm.dataset.userId = user.id;
+
+    openAdminDialog(vetPasswordDialog);
+}
+
+async function submitVeterinaryPassword(event) {
+    event.preventDefault();
+
+    const password = document.getElementById('vetNewPassword').value;
+
+    if (password.length < 8) {
+        vetPasswordMessage.textContent = 'Password must be at least 8 characters.';
+        vetPasswordMessage.className = 'message error';
+        return;
+    }
+
+    saveVetPasswordButton.disabled = true;
+
+    try {
+        await apiRequest(
+            `/api/clinic/admin/users/${encodeURIComponent(vetPasswordForm.dataset.userId)}/password`,
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    password,
+                    mustChangePassword: document.getElementById('vetPasswordMustChange').value === 'true'
+                })
+            }
+        );
+
+        closeAdminDialog(vetPasswordDialog);
+
+        if (vetUsersMessage) {
+            showMessage(vetUsersMessage, 'Password updated.', 'success');
+        }
+    } catch (error) {
+        vetPasswordMessage.textContent = error.message;
+        vetPasswordMessage.className = 'message error';
+    } finally {
+        saveVetPasswordButton.disabled = false;
+    }
+}
+
+async function deleteVeterinaryUser(user) {
+    if (!user || user.id === currentAdministratorId) return;
+
+    const confirmed = window.confirm(
+        `Delete the unused account for ${user.fullName} (${user.email})?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+        await apiRequest(`/api/clinic/admin/users/${encodeURIComponent(user.id)}`, {
+            method: 'DELETE'
+        });
+
+        await loadVeterinaryUsers();
+
+        if (vetUsersMessage) {
+            showMessage(vetUsersMessage, 'User account deleted.', 'success');
+        }
+    } catch (error) {
+        if (vetUsersMessage) {
+            showMessage(vetUsersMessage, error.message, 'error');
+        }
+    }
+}
+
+/* --- System settings ----------------------------------------------------- */
+
+async function loadSystemSettings() {
+    if (!dashboardReady || !clinicSettingsForm) return;
+
+    systemSettingFields.forEach((field) => {
+        const element = document.getElementById(field);
+        if (element) element.value = '';
+    });
+
+    try {
+        const data = await apiRequest('/api/clinic/admin/settings');
+        const settings = data.settings || {};
+
+        document.getElementById('clinicName').value = settings.clinicName || '';
+        document.getElementById('clinicEmail').value = settings.clinicEmail || '';
+        document.getElementById('clinicPhone').value = settings.clinicPhone || '';
+        document.getElementById('clinicAddress').value = settings.clinicAddress || '';
+
+        setAdminSelectValue(
+            document.getElementById('requirePetVerification'),
+            String(settings.requirePetVerification ?? true)
+        );
+        setAdminSelectValue(
+            document.getElementById('allowOwnerRegistration'),
+            String(settings.allowOwnerRegistration ?? true)
+        );
+        setAdminSelectValue(
+            document.getElementById('allowOwnerPinUnlock'),
+            String(settings.allowOwnerPinUnlock ?? true)
+        );
+        setAdminSelectValue(
+            document.getElementById('reminderEnabled'),
+            String(settings.reminderEnabled ?? true)
+        );
+        setAdminSelectValue(
+            document.getElementById('deviceTelemetryEnabled'),
+            String(settings.deviceTelemetryEnabled ?? true)
+        );
+
+        document.getElementById('reminderDaysBefore').value =
+            settings.reminderDaysBefore ?? 7;
+        document.getElementById('maxLoginAttempts').value =
+            settings.maxLoginAttempts ?? 10;
+        document.getElementById('sessionTimeoutMinutes').value =
+            settings.sessionTimeoutMinutes ?? 60;
+
+        if (systemSettingsMessage) {
+            showMessage(systemSettingsMessage, '', '');
+        }
+    } catch (error) {
+        if (systemSettingsMessage) {
+            showMessage(systemSettingsMessage, error.message, 'error');
+        }
+    }
+}
+
+async function saveSystemSettings() {
+    const payload = {
+        clinicName: document.getElementById('clinicName').value.trim(),
+        clinicEmail: document.getElementById('clinicEmail').value.trim(),
+        clinicPhone: document.getElementById('clinicPhone').value.trim(),
+        clinicAddress: document.getElementById('clinicAddress').value.trim(),
+        requirePetVerification: document.getElementById('requirePetVerification').value === 'true',
+        allowOwnerRegistration: document.getElementById('allowOwnerRegistration').value === 'true',
+        allowOwnerPinUnlock: document.getElementById('allowOwnerPinUnlock').value === 'true',
+        reminderEnabled: document.getElementById('reminderEnabled').value === 'true',
+        reminderDaysBefore: Number(document.getElementById('reminderDaysBefore').value),
+        deviceTelemetryEnabled: document.getElementById('deviceTelemetryEnabled').value === 'true',
+        maxLoginAttempts: Number(document.getElementById('maxLoginAttempts').value),
+        sessionTimeoutMinutes: Number(document.getElementById('sessionTimeoutMinutes').value)
+    };
+
+    saveSystemSettingsButton.disabled = true;
+
+    try {
+        await apiRequest('/api/clinic/admin/settings', {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+
+        if (systemSettingsMessage) {
+            showMessage(systemSettingsMessage, 'System settings saved.', 'success');
+        }
+    } catch (error) {
+        if (systemSettingsMessage) {
+            showMessage(systemSettingsMessage, error.message, 'error');
+        }
+    } finally {
+        saveSystemSettingsButton.disabled = false;
+    }
+}
+
+/* --- Global IoT device registry ----------------------------------------- */
+
+function renderDeviceRegistryStats(summary) {
+    if (!deviceRegistryStats) return;
+
+    deviceRegistryStats.replaceChildren();
+
+    const entries = [
+        ['Active', summary?.active],
+        ['Disabled', summary?.disabled],
+        ['Revoked', summary?.revoked]
+    ];
+
+    entries.forEach(([label, value]) => {
+        const card = document.createElement('div');
+        card.className = 'admin-stat-card';
+
+        const strong = document.createElement('strong');
+        strong.textContent = String(value ?? 0);
+
+        const span = document.createElement('span');
+        span.textContent = label;
+
+        card.append(strong, span);
+        deviceRegistryStats.appendChild(card);
+    });
+}
+
+function renderDeviceRegistry(devices) {
+    if (!deviceRegistryTableBody) return;
+
+    deviceRegistryTableBody.replaceChildren();
+
+    if (devices.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+
+        cell.colSpan = 6;
+        cell.className = 'muted';
+        cell.textContent = 'No devices match the selected filters.';
+
+        row.appendChild(cell);
+        deviceRegistryTableBody.appendChild(row);
+        return;
+    }
+
+    devices.forEach((device) => {
+        const row = document.createElement('tr');
+
+        textCell(row, device.deviceCode, '', 'Device Code');
+
+        const typeCell = document.createElement('td');
+        typeCell.textContent = device.deviceType === 'feeder'
+            ? 'Automatic Feeder'
+            : device.deviceType === 'collar'
+                ? 'Activity Monitoring Collar'
+                : device.deviceType || 'Unknown';
+        typeCell.dataset.label = 'Type';
+        row.appendChild(typeCell);
+
+        textCell(
+            row,
+            device.pet
+                ? `${device.pet.name || 'Unnamed pet'} (${device.pet.petCode || 'No pet code'})`
+                : 'Unassigned',
+            '',
+            'Assigned Pet'
+        );
+
+        const statusCell = document.createElement('td');
+        const status = document.createElement('span');
+        status.className = `device-status device-status-${device.status}`;
+        status.textContent = device.status || 'Unknown';
+        statusCell.dataset.label = 'Status';
+        statusCell.appendChild(status);
+        row.appendChild(statusCell);
+
+        textCell(
+            row,
+            device.lastSeenAt ? formatDateTime(device.lastSeenAt) : 'No activity reported',
+            '',
+            'Last Seen'
+        );
+
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'admin-table-actions';
+        actionsCell.dataset.label = 'Actions';
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'secondary';
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', () => removeRegistryDevice(device));
+        actionsCell.appendChild(removeButton);
+
+        row.appendChild(actionsCell);
+        deviceRegistryTableBody.appendChild(row);
+    });
+}
+
+async function loadDeviceRegistry() {
+    if (!dashboardReady || !deviceRegistryTableBody) return;
+
+    deviceRegistryTableBody.replaceChildren();
+
+    const loadingRow = document.createElement('tr');
+    const loadingCell = document.createElement('td');
+
+    loadingCell.colSpan = 6;
+    loadingCell.className = 'muted';
+    loadingCell.textContent = 'Loading the device registry...';
+
+    loadingRow.appendChild(loadingCell);
+    deviceRegistryTableBody.appendChild(loadingRow);
+
+    if (refreshDeviceRegistryButton) refreshDeviceRegistryButton.disabled = true;
+
+    const query = new URLSearchParams();
+
+    if (deviceRegistryStatusFilter?.value) {
+        query.set('status', deviceRegistryStatusFilter.value);
+    }
+
+    if (deviceRegistryTypeFilter?.value) {
+        query.set('deviceType', deviceRegistryTypeFilter.value);
+    }
+
+    try {
+        const data = await apiRequest(`/api/clinic/admin/devices?${query.toString()}`);
+
+        renderDeviceRegistryStats(data.summary);
+        renderDeviceRegistry(Array.isArray(data.devices) ? data.devices : []);
+
+        if (deviceRegistryMessage) {
+            showMessage(deviceRegistryMessage, '', '');
+        }
+    } catch (error) {
+        if (deviceRegistryMessage) {
+            showMessage(deviceRegistryMessage, error.message, 'error');
+        }
+    } finally {
+        if (refreshDeviceRegistryButton) refreshDeviceRegistryButton.disabled = false;
+    }
+}
+
+async function removeRegistryDevice(device) {
+    if (!device) return;
+
+    const confirmed = window.confirm(
+        `Remove device ${device.deviceCode} from the global registry? ` +
+        'Its stored credential hash is deleted with it.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        await apiRequest(`/api/clinic/admin/devices/${encodeURIComponent(device.id)}`, {
+            method: 'DELETE'
+        });
+
+        await loadDeviceRegistry();
+
+        if (deviceRegistryMessage) {
+            showMessage(deviceRegistryMessage, 'Device removed from the registry.', 'success');
+        }
+    } catch (error) {
+        if (deviceRegistryMessage) {
+            showMessage(deviceRegistryMessage, error.message, 'error');
+        }
+    }
+}
+
+/* --- System audit logs --------------------------------------------------- */
+
+function renderAuditOverview(overview) {
+    if (!auditOverviewStats) return;
+
+    auditOverviewStats.replaceChildren();
+
+    const entries = [
+        ['Owners', overview?.registeredOwners],
+        ['Pets', overview?.registeredPets],
+        ['Staff Accounts', overview?.veterinaryStaff],
+        ['Devices', overview?.registeredDevices],
+        ['Vaccination Records', overview?.vaccinationRecords],
+        ['Audit Entries', overview?.auditEntries]
+    ];
+
+    entries.forEach(([label, value]) => {
+        const card = document.createElement('div');
+        card.className = 'admin-stat-card';
+
+        const strong = document.createElement('strong');
+        strong.textContent = String(value ?? 0);
+
+        const span = document.createElement('span');
+        span.textContent = label;
+
+        card.append(strong, span);
+        auditOverviewStats.appendChild(card);
+    });
+}
+
+function renderAuditLogs(logs) {
+    if (!auditLogsTableBody) return;
+
+    auditLogsTableBody.replaceChildren();
+
+    if (logs.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+
+        cell.colSpan = 5;
+        cell.className = 'muted';
+        cell.textContent = 'No audit entries match the selected filters.';
+
+        row.appendChild(cell);
+        auditLogsTableBody.appendChild(row);
+        return;
+    }
+
+    logs.forEach((log) => {
+        const row = document.createElement('tr');
+
+        textCell(row, formatDateTime(log.createdAt), '', 'When');
+        textCell(row, log.actor ? log.actor.fullName : 'System', '', 'Actor');
+        textCell(row, log.action, 'admin-table-action', 'Action');
+        textCell(row, log.entityType || 'none', '', 'Record');
+        textCell(row, log.summary, '', 'Details');
+
+        auditLogsTableBody.appendChild(row);
+    });
+}
+
+async function loadAuditLogs() {
+    if (!dashboardReady || !auditLogsTableBody) return;
+
+    auditLogsTableBody.replaceChildren();
+
+    const loadingRow = document.createElement('tr');
+    const loadingCell = document.createElement('td');
+
+    loadingCell.colSpan = 5;
+    loadingCell.className = 'muted';
+    loadingCell.textContent = 'Loading audit logs...';
+
+    loadingRow.appendChild(loadingCell);
+    auditLogsTableBody.appendChild(loadingRow);
+
+    if (refreshAuditLogsButton) refreshAuditLogsButton.disabled = true;
+
+    const query = new URLSearchParams();
+
+    if (auditActionFilter?.value.trim()) {
+        query.set('action', auditActionFilter.value.trim());
+    }
+
+    if (auditEntityTypeFilter?.value) {
+        query.set('entityType', auditEntityTypeFilter.value);
+    }
+
+    if (auditSourceFilter?.value) {
+        query.set('source', auditSourceFilter.value);
+    }
+
+    try {
+        const data = await apiRequest(`/api/clinic/admin/audit-logs?${query.toString()}`);
+
+        renderAuditOverview(data.systemOverview);
+        renderAuditLogs(Array.isArray(data.logs) ? data.logs : []);
+
+        if (auditLogsMessage) {
+            showMessage(auditLogsMessage, '', '');
+        }
+    } catch (error) {
+        if (auditLogsMessage) {
+            showMessage(auditLogsMessage, error.message, 'error');
+        }
+    } finally {
+        if (refreshAuditLogsButton) refreshAuditLogsButton.disabled = false;
+    }
+}
+
+/* --- Administration event wiring ---------------------------------------- */
+
+if (addVetUserButton) {
+    addVetUserButton.addEventListener('click', () => openVetUserDialog(null));
+}
+
+if (refreshVetUsersButton) {
+    refreshVetUsersButton.addEventListener('click', loadVeterinaryUsers);
+}
+
+if (vetUserForm) {
+    vetUserForm.addEventListener('submit', submitVeterinaryUser);
+}
+
+if (vetPasswordForm) {
+    vetPasswordForm.addEventListener('submit', submitVeterinaryPassword);
+}
+
+if (saveSystemSettingsButton) {
+    saveSystemSettingsButton.addEventListener('click', saveSystemSettings);
+}
+
+if (refreshDeviceRegistryButton) {
+    refreshDeviceRegistryButton.addEventListener('click', loadDeviceRegistry);
+}
+
+if (deviceRegistryStatusFilter) {
+    deviceRegistryStatusFilter.addEventListener('change', loadDeviceRegistry);
+}
+
+if (deviceRegistryTypeFilter) {
+    deviceRegistryTypeFilter.addEventListener('change', loadDeviceRegistry);
+}
+
+if (refreshAuditLogsButton) {
+    refreshAuditLogsButton.addEventListener('click', loadAuditLogs);
+}
+
+if (applyAuditFiltersButton) {
+    applyAuditFiltersButton.addEventListener('click', loadAuditLogs);
+}
+
+// Guard the administration sections on load: if the signed-in account is not
+// an administrator, hide the sidebar entries and the sections themselves so
+// a stale hidden panel can never be opened by scripting.
+(function initializeAdministrationAccess() {
+    if (isAdministratorSession()) return;
+
+    document.querySelectorAll('[data-administrator-only]').forEach((node) => {
+        node.hidden = true;
+    });
 })();
 
 switchView('overview');
