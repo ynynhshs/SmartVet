@@ -12,36 +12,52 @@ const { createAccessToken } = require('../src/services/authService');
 const clinicRoutes = require('../src/routes/clinicRoutes');
 const ownerRoutes = require('../src/routes/ownerRoutes');
 
+/**
+ * Chainable stand-in for a Mongoose query: builder methods return the stub
+ * itself, while lean()/then() settle with the supplied fixture value.
+ */
 class MockQuery {
+    /** Stores the fixture value this stubbed query resolves with. */
     constructor(value) {
         this.value = value;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     select() {
         return this;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     populate() {
         return this;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     sort() {
         return this;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     limit() {
         return this;
     }
 
+    /** Resolves the chain with the fixture value, mimicking Mongoose's lean(). */
     lean() {
         return Promise.resolve(this.value);
     }
 
+    /** Makes the stub thenable so awaited queries settle on the fixture value. */
     then(resolve, reject) {
         return Promise.resolve(this.value).then(resolve, reject);
     }
 }
 
+/**
+ * Verifies the owner vaccination listing, the clinic follow-up report for valid
+ * and invalid date ranges, vaccination creation, and the owner role guard on
+ * clinic reports, all against mocked models.
+ */
 test('owner vaccine follow-up and clinic reporting APIs', async () => {
     const veterinaryId = new mongoose.Types.ObjectId();
     const ownerId = new mongoose.Types.ObjectId();
@@ -77,16 +93,20 @@ test('owner vaccine follow-up and clinic reporting APIs', async () => {
         vaccinationCreate: VaccinationRecord.create
     };
 
+    // Stubs User.findById so owner and veterinary accounts resolve without MongoDB.
     User.findById = (id) => ({
         select: async () => String(id) === ownerId.toString()
             ? ownerUser
             : veterinaryUser
     });
+    // Stubs Pet.findOne to return the shared pet fixture.
     Pet.findOne = () => new MockQuery(pet);
+    // Captures the report filter and returns the pet fixture for listing queries.
     Pet.find = (filter = {}) => {
         reportFilter = filter;
         return new MockQuery([pet]);
     };
+    // Captures the report filter and returns one vaccination fixture.
     VaccinationRecord.find = (filter = {}) => {
         reportFilter = filter;
         return new MockQuery([{
@@ -101,6 +121,7 @@ test('owner vaccine follow-up and clinic reporting APIs', async () => {
             dosage: '1 dose'
         }]);
     };
+    // Records the created vaccination payload and counts creations for later assertions.
     VaccinationRecord.create = async (data) => {
         vaccinationCreateCount += 1;
         vaccinationData = {
@@ -114,10 +135,12 @@ test('owner vaccine follow-up and clinic reporting APIs', async () => {
     app.use(express.json());
     app.use('/api/clinic', clinicRoutes);
     app.use('/api/owner', ownerRoutes);
+    // Converts any thrown error into a 500 JSON response instead of crashing the test.
     app.use((error, _req, res, _next) =>
         res.status(500).json({ success: false, message: error.message })
     );
     const server = app.listen(0);
+    // Closes the ephemeral server and restores every stubbed model method.
     after(() => {
         server.close();
         User.findById = originals.userFindById;
@@ -127,6 +150,7 @@ test('owner vaccine follow-up and clinic reporting APIs', async () => {
         VaccinationRecord.create = originals.vaccinationCreate;
     });
 
+    // Waits until the ephemeral port is listening before issuing requests.
     await new Promise((resolve) => server.once('listening', resolve));
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
     const veterinaryHeaders = {

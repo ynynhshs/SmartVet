@@ -3,6 +3,11 @@ const Device = require('../models/Device');
 
 // Authenticate a registered IoT device using its device token.
 // The database stores only the SHA-256 hash, never the raw token.
+/**
+ * Authenticate an IoT device from its `X-Device-Token` header by matching the
+ * SHA-256 hash stored on the Device document. Rejects malformed tokens, unknown
+ * devices (401) and inactive devices (403), and stamps `lastSeenAt`/`lastSyncAt`.
+ */
 async function requireDeviceAuth(req, res, next) {
     try {
         const deviceToken = req.get('X-Device-Token');

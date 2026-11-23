@@ -82,6 +82,7 @@ const feedingEventSchema = new mongoose.Schema(
             type: Date,
             default: undefined,
             validate: {
+                // Reject a completion time earlier than the start time.
                 validator: function (value) {
                     if (!value || !this.startedAt) {
                         return true;

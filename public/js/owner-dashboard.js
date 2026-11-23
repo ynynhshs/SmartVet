@@ -3,6 +3,10 @@
 // token clears it.
 const token = SmartVetSession.getToken();
 
+/**
+ * Clears the persisted SmartVetSession token so the next page load requires a fresh sign-in.
+ * Called by logout() and by apiRequest() when the token is missing or the server answers 401.
+ */
 function clearStoredSession() {
     SmartVetSession.clear();
 }
@@ -80,6 +84,9 @@ const petUploadText = document.getElementById('petUploadText');
 const uploadStatusBar = document.getElementById('uploadStatusBar');
 let petPhotoPreviewUrl = null;
 
+/**
+ * Revokes the pet photo object URL and resets the upload widget (input value, preview, file name, status bar) to its empty state.
+ */
 function clearPetPhotoPreview() {
     if (petPhotoPreviewUrl) {
         URL.revokeObjectURL(petPhotoPreviewUrl);
@@ -168,11 +175,19 @@ if (petPhotoInput && petPhotoPreviewContainer && petPhotoPreview && petPhotoFile
 // Sidebar & View Navigation Logic
 const SETTINGS_VIEWS = ['account', 'theme', 'pin'];
 
+/**
+ * Returns true when the desktop sidebar shell carries the `sidebar-collapsed` class.
+ * Used to decide whether the Settings group toggle expands its sub-menu or jumps straight to a page.
+ */
 function isSidebarCollapsed() {
     const shell = document.querySelector('.owner-shell');
     return Boolean(shell && shell.classList.contains('sidebar-collapsed'));
 }
 
+/**
+ * Activates the nav item and `.owner-view` panel matching `targetView` while hiding every other view.
+ * Also keeps the Settings group expanded whenever one of its own sub-pages is open.
+ */
 function switchView(targetView) {
     const views = document.querySelectorAll('.owner-view');
 
@@ -279,6 +294,10 @@ if (refreshOwnerVaccinationsButton) {
     );
 }
 
+/**
+ * Writes `message` into `element` and swaps its `error`/`success` modifier classes, adding `type` when given.
+ * Silently does nothing when `element` is null.
+ */
 function showMessage(element, message, type = '') {
     if (!element) return;
     element.textContent = message;
@@ -286,6 +305,9 @@ function showMessage(element, message, type = '') {
     if (type) element.classList.add(type);
 }
 
+/**
+ * Formats a vaccination date for display, returning 'Not scheduled' for empty values and 'Not available' for unparseable dates.
+ */
 function formatOwnerVaccinationDate(value) {
     if (!value) return 'Not scheduled';
 
@@ -299,6 +321,10 @@ function formatOwnerVaccinationDate(value) {
         });
 }
 
+/**
+ * Derives the follow-up badge from `record.nextDueDate` by comparing its date part with today.
+ * Returns a label plus CSS class: 'no-follow-up', 'overdue', 'due-soon' (within 30 days) or 'upcoming'.
+ */
 function getOwnerVaccinationFollowUp(record) {
     if (!record.nextDueDate) {
         return { label: 'No follow-up scheduled', className: 'no-follow-up' };
@@ -324,6 +350,10 @@ function getOwnerVaccinationFollowUp(record) {
         : { label: 'Upcoming', className: 'upcoming' };
 }
 
+/**
+ * Opens a new window and writes a self-contained, HTML-escaped vaccination certificate that triggers print on load.
+ * Shows an error message instead when the pop-up is blocked.
+ */
 function printOwnerVaccinationCertificate(record) {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -395,6 +425,10 @@ function printOwnerVaccinationCertificate(record) {
     printWindow.document.close();
 }
 
+/**
+ * Fetches `/api/owner/vaccinations` and renders one follow-up card per record, showing a skeleton loader while in flight.
+ * Re-enables the refresh button in `finally`; an empty list renders an empty-state message.
+ */
 async function loadOwnerVaccinations() {
     if (!ownerVaccinationsList) return;
 
@@ -483,6 +517,9 @@ async function loadOwnerVaccinations() {
 }
 
 // --- NEW SKELETON LOADER FUNCTION ---
+/**
+ * Builds and returns a `skeleton-grid` container holding `count` placeholder cards for loading states.
+ */
 function createSkeletonLoader(count = 3) {
     const container = document.createElement('div');
     container.className = 'skeleton-grid';
@@ -505,6 +542,9 @@ function createSkeletonLoader(count = 3) {
     return container;
 }
 
+/**
+ * Clears the stored session and redirects the browser to `/login.html`.
+ */
 function logout() {
     clearStoredSession();
     window.location.assign('/login.html');
@@ -512,6 +552,10 @@ function logout() {
 
 document.getElementById('logoutButton').addEventListener('click', logout);
 
+/**
+ * Fetch wrapper that injects the bearer token, JSON-encodes non-FormData bodies and throws on non-OK responses or `success: false`.
+ * Logs out and throws when the token is missing or the server answers 401.
+ */
 async function apiRequest(url, options = {}) {
     if (!token) {
         logout();
@@ -544,6 +588,9 @@ async function apiRequest(url, options = {}) {
     return data;
 }
 
+/**
+ * Maps a registration status key to its human-readable label, falling back to 'Unknown status'.
+ */
 function readableStatus(status) {
     const labels = {
         pending: 'Pending veterinary review',
@@ -553,7 +600,14 @@ function readableStatus(status) {
     return labels[status] || 'Unknown status';
 }
 
+/**
+ * Builds the flip-card DOM for a pet (photo, detail grid, vaccination card and QR section) and wires the click-to-flip behaviour.
+ * The vaccination card and QR controls are only added for approved pets that have a `petCode`, and the vaccination card loads lazily on first click.
+ */
 function createPetCard(pet) {
+    /**
+     * Formats a vaccination date inside a pet card, returning 'Not recorded' when empty and 'Not available' for invalid dates.
+     */
     function formatVaccinationDate(value) {
         if (!value) return 'Not recorded';
         const date = new Date(value);
@@ -562,6 +616,10 @@ function createPetCard(pet) {
             : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
+        /**
+         * Appends a label/value paragraph to a vaccination card, adding the `vaccine-date-highlight` class for real date values.
+         * The label is written with `innerHTML` while the value uses `textContent`.
+         */
         function addVaccinationDetail(parent, label, value, isDate = false) {
         const paragraph = document.createElement('p');
         
@@ -578,6 +636,10 @@ function createPetCard(pet) {
         paragraph.appendChild(valueSpan);
         parent.appendChild(paragraph);
     }
+    /**
+     * Fetches `/api/owner/pets/:id/vaccinations` and fills `container` with the digital vaccination card, showing a skeleton loader first.
+     * Returns true on success and false after rendering an inline error message.
+     */
     async function loadOwnerVaccinationCard(petId, container) {
         // Replaced text loader with Skeleton Loader
         container.replaceChildren(createSkeletonLoader(1));
@@ -707,6 +769,9 @@ function createPetCard(pet) {
     const detailsGrid = document.createElement('div');
     detailsGrid.className = 'pet-details-grid';
 
+    /**
+     * Appends one label/value row to the pet details grid, skipping the row entirely when `value` is falsy.
+     */
     function addDetailItem(label, value) {
         if (!value) return;
         const item = document.createElement('div');
@@ -850,6 +915,9 @@ function createPetCard(pet) {
     return card;
 }
 
+/**
+ * Builds a notification card with read/unread styling, an optional high-priority badge and a "Mark as Read" button for unread items only.
+ */
 function createNotificationCard(notification) {
     const card = document.createElement('article');
     card.className = notification.read ? 'owner-notification-card is-read' : 'owner-notification-card is-unread';
@@ -884,6 +952,9 @@ function createNotificationCard(notification) {
 }
 
 
+/**
+ * Formats a feeding timestamp with `toLocaleString()`, returning 'Not recorded' or 'Not available' for empty or invalid values.
+ */
 function formatOwnerFeedingTimestamp(value) {
     if (!value) {
         return 'Not recorded';
@@ -899,6 +970,9 @@ function formatOwnerFeedingTimestamp(value) {
 }
 
 
+/**
+ * Builds a feeding event card with a status-specific outcome message and a `feeding-status-*` class derived from the status.
+ */
 function createOwnerFeedingEventCard(event) {
     const card = document.createElement('article');
     card.className = 'owner-feeding-event-card';
@@ -909,6 +983,9 @@ function createOwnerFeedingEventCard(event) {
     heading.textContent = petName;
     card.appendChild(heading);
 
+    /**
+     * Appends a plain "label: value" paragraph to a feeding event card.
+     */
     function addDetail(label, value) {
         const detail = document.createElement('p');
         detail.textContent = `${label}: ${value}`;
@@ -977,6 +1054,10 @@ function createOwnerFeedingEventCard(event) {
 }
 
 
+/**
+ * Fills the feeding pet filter from `/api/owner/pets`, guarded by a `data-loaded` flag so it never fetches twice.
+ * Failures are only logged to the console.
+ */
 async function populateOwnerFeedingPetFilter() {
     if (
         !ownerFeedingPetFilter ||
@@ -1011,6 +1092,10 @@ const OWNER_ACTIVITY_LIMIT = 50;
 let ownerActivitySkip = 0;
 let ownerActivityTotal = 0;
 
+/**
+ * Fetches one page (50 records) of `/api/owner/activity-records` using the pet, type and from filters.
+ * `options.append` advances the skip offset and appends instead of replacing; the Load more button reflects the shown/total counts.
+ */
 async function loadOwnerActivityRecords(options = {}) {
     if (!ownerActivityRecordsList) return;
 
@@ -1205,6 +1290,10 @@ async function loadOwnerActivityRecords(options = {}) {
     }
 }
 
+    /**
+     * Loads `/api/owner/feeding-events` with the selected pet and status filters, populating the pet filter first.
+     * Renders an empty-state message when no events exist and re-enables the refresh button in `finally`.
+     */
     async function loadOwnerFeedingEvents() {
     if (!refreshOwnerFeedingEventsButton || !ownerFeedingEventList) {
         return;
@@ -1280,6 +1369,9 @@ async function loadOwnerActivityRecords(options = {}) {
 }
 
 
+/**
+ * Fetches `/api/owner/notifications`, renders the cards and updates the sidebar and overview unread counts from `unreadCount`.
+ */
 async function loadNotifications() {
     refreshNotificationsButton.disabled = true;
     showMessage(notificationsSummary, 'Loading notifications...');
@@ -1317,6 +1409,10 @@ async function loadNotifications() {
     }
 }
 
+/**
+ * PATCHes the notification as read and then reloads the whole notification list.
+ * The button stays disabled while the request is in flight and is re-enabled if it fails.
+ */
 async function markNotificationAsRead(notificationId, button) {
     button.disabled = true;
     try {
@@ -1328,6 +1424,9 @@ async function markNotificationAsRead(notificationId, button) {
 }
 
 // --- Browser push notifications (Web Push) ---
+/**
+ * Converts a base64url VAPID public key into the Uint8Array expected by `pushManager.subscribe`.
+ */
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -1341,12 +1440,18 @@ function urlBase64ToUint8Array(base64String) {
     return output;
 }
 
+/**
+ * Delegates to `showMessage` for the push status element, doing nothing when that element is absent.
+ */
 function setPushStatus(message, type = '') {
     if (pushStatus) {
         showMessage(pushStatus, message, type);
     }
 }
 
+/**
+ * Sets the enable-notifications button's label, disabled state and status text for the unsupported, blocked, already-subscribed and available cases.
+ */
 function updatePushButton({ supported, isSubscribed, permission }) {
     if (!enableNotificationsButton) return;
 
@@ -1375,6 +1480,10 @@ function updatePushButton({ supported, isSubscribed, permission }) {
     enableNotificationsButton.textContent = 'Enable Browser Notifications';
 }
 
+/**
+ * Reads `/api/owner/push-subscription` and refreshes the push button state.
+ * Bails out early when the button or the Notification API is missing.
+ */
 async function refreshPushStatus() {
     if (!enableNotificationsButton || !('Notification' in window)) return;
 
@@ -1393,6 +1502,10 @@ async function refreshPushStatus() {
     }
 }
 
+/**
+ * Requests notification permission, registers `/sw.js`, subscribes with the server's VAPID key and POSTs the resulting subscription.
+ * Failures are surfaced through the push status text and the button is reset.
+ */
 async function enablePushNotifications() {
     if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
         setPushStatus('This browser does not support push notifications.', 'error');
@@ -1455,6 +1568,10 @@ if (notificationsNavigationButton) {
     });
 }
 
+/**
+ * Fetches `/api/owner/pets`, updates the sidebar and overview pet counts and renders a flip card per pet.
+ * Falls back to an empty-state message and re-enables the refresh button in `finally`.
+ */
 async function loadPets() {
     refreshPetsButton.disabled = true;
     showMessage(petsMessage, 'Loading registered pets...');
@@ -1491,6 +1608,10 @@ async function loadPets() {
     }
 }
 
+/**
+ * Confirms the token via `/api/auth/me` and gates the page to the `owner` role before loading pets and notifications.
+ * A missing token logs out; a non-owner only gets an error message.
+ */
 async function verifyOwner() {
     if (!token) {
         logout();
@@ -1596,6 +1717,10 @@ if (feedingHistoryNavButton) {
 }
 
 // Populate the Activity Monitoring pet filter.
+/**
+ * Populates the activity pet filter from `/api/owner/pets` once (guarded by `data-loaded`) and restores the previously selected pet when it still exists.
+ * Failures are logged and reported through the activity summary.
+ */
 async function loadOwnerActivityPetOptions() {
     if (!ownerActivityPetFilter) return;
 
@@ -1703,6 +1828,10 @@ if (applyOwnerFeedingFiltersButton) {
 
 
 /* Sidebar navigation and desktop collapse */
+/**
+ * Wires the sidebar collapse toggle and the mobile drawer (backdrop, Escape key, focus restore).
+ * Persists the desktop collapsed state under the `smartvetOwnerSidebarCollapsed` localStorage key.
+ */
 (function initializeOwnerSidebarToggle() {
     const shell = document.querySelector('.owner-shell');
     const toggle = document.getElementById('ownerSidebarToggle');
@@ -1715,6 +1844,10 @@ if (applyOwnerFeedingFiltersButton) {
 
     const storageKey = 'smartvetOwnerSidebarCollapsed';
 
+    /**
+     * Toggles the mobile drawer classes and backdrop while syncing `aria-expanded`.
+     * Moves focus to the close button on open, or back to the toggle when `restoreFocus` is set.
+     */
     function setMobileSidebarOpen(open, restoreFocus = false) {
         shell.classList.toggle('sidebar-open', open);
         document.body.classList.toggle('sidebar-open', open);
@@ -1728,6 +1861,9 @@ if (applyOwnerFeedingFiltersButton) {
         }
     }
 
+    /**
+     * Applies the `sidebar-collapsed` class only at desktop widths and updates the toggle's `aria-expanded`, label and title.
+     */
     function applyCollapsedState(collapsed) {
         const isMobile = mobileQuery.matches;
         shell.classList.toggle('sidebar-collapsed', !isMobile && collapsed);
@@ -1781,6 +1917,10 @@ if (applyOwnerFeedingFiltersButton) {
 
 
 /* SmartVet shared light/dark theme */
+/**
+ * Restores the light/dark theme from the `smartvetTheme` localStorage key and wires the theme option buttons.
+ * Selecting an option applies the theme, persists it and shows a confirmation message.
+ */
 (function initializeOwnerTheme() {
     const storageKey = 'smartvetTheme';
     const themeMessage = document.getElementById('themeMessage');
@@ -1788,10 +1928,16 @@ if (applyOwnerFeedingFiltersButton) {
         document.querySelectorAll('[data-theme-option]')
     );
 
+    /**
+     * Returns 'dark' or 'light' based on `document.body.dataset.theme`.
+     */
     function currentTheme() {
         return document.body.dataset.theme === 'dark' ? 'dark' : 'light';
     }
 
+    /**
+     * Sets `document.body.dataset.theme` and marks the matching theme option button as selected and pressed.
+     */
     function applyTheme(theme) {
         const isDark = theme === 'dark';
 
@@ -1861,6 +2007,9 @@ const triggerPhotoBtn = document.getElementById('triggerPhotoBtn');
 
 let accountPhotoObjectUrl = null;
 
+/**
+ * Renders up to two uppercase initials in the profile avatar placeholder, falling back to a person emoji.
+ */
 function updateAccountInitials(fullName) {
     if (!accountProfileInitials) return;
 
@@ -1875,6 +2024,9 @@ function updateAccountInitials(fullName) {
     accountProfileInitials.textContent = initials || '👤';
 }
 
+/**
+ * Fills the account form fields, the cached `ownerEmail`, the welcome heading and the account card title from a user object.
+ */
 function displayOwnerProfile(user) {
     accountFullName.value = user.fullName || '';
     accountEmail.value = user.email || '';
@@ -1946,6 +2098,10 @@ if (accountPhotoInput) {
     });
 }
 
+/**
+ * Fetches `/api/owner/profile/photo` with the bearer token and reveals the image only once it has loaded.
+ * Reverts to the initials avatar on a non-OK response or any error.
+ */
 async function loadAccountPhoto() {
     if (!accountProfilePhoto || !accountProfileInitials) return;
 
@@ -1980,6 +2136,10 @@ async function loadAccountPhoto() {
     }
 }
 
+/**
+ * Loads `/api/owner/profile`, renders it, then loads the profile photo or falls back to the initials avatar.
+ * Disables the save button while the request is in flight.
+ */
 async function loadOwnerProfile() {
     if (!accountProfileForm) return;
 
@@ -2123,6 +2283,10 @@ const forgotPinMessage = document.getElementById('forgotPinMessage');
 const resetPinButton = document.getElementById('resetPinButton');
 const cancelForgotPinButton = document.getElementById('cancelForgotPinButton');
 
+/**
+ * Shows the PIN setup banner only when no PIN is set and it has not been dismissed.
+ * Dismissal is read from the `smartvetOwnerPinBannerDismissed` localStorage key, with storage errors treated as not dismissed.
+ */
 function updatePinSetupBanner(hasPin) {
     if (!pinSetupBanner) return;
 
@@ -2137,6 +2301,9 @@ function updatePinSetupBanner(hasPin) {
     pinSetupBanner.hidden = Boolean(hasPin) || dismissed;
 }
 
+/**
+ * Hides the banner and records the dismissal in localStorage, swallowing errors where storage is unavailable.
+ */
 function dismissPinSetupBanner() {
     try {
         localStorage.setItem(PIN_BANNER_KEY, 'true');
@@ -2161,6 +2328,9 @@ if (dismissPinBanner) {
     dismissPinBanner.addEventListener('click', dismissPinSetupBanner);
 }
 
+/**
+ * Updates the PIN status text and `is-set` class, toggles the Remove PIN button's visibility and disarms any pending removal confirmation.
+ */
 function setPinStatus(hasPin, pinSetAt) {
     if (pinStatus) {
         const when = pinSetAt ? new Date(pinSetAt) : null;
@@ -2183,6 +2353,9 @@ function setPinStatus(hasPin, pinSetAt) {
     disarmPinRemoval();
 }
 
+/**
+ * Fetches `/api/owner/profile` to cache the owner email, prefill the forgot-PIN email field and refresh the PIN status.
+ */
 async function loadPinSettings() {
     if (!pinForm) return;
 
@@ -2265,6 +2438,9 @@ if (pinForm) {
     });
 }
 
+/**
+ * Resets the two-step Remove PIN confirmation by clearing the armed flag and timer and restoring the button label and `aria-pressed`.
+ */
 function disarmPinRemoval() {
     pinRemoveArmed = false;
 

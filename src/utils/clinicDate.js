@@ -9,6 +9,11 @@
 const CLINIC_TIMEZONE = process.env.CLINIC_TIMEZONE || 'Asia/Manila';
 
 // Returns a `YYYY-MM-DD` string for the given instant in the clinic timezone.
+/**
+ * Format an instant as a `YYYY-MM-DD` calendar date in the clinic timezone
+ * (Asia/Manila by default). Used so date comparisons follow local clinic days
+ * rather than the UTC day.
+ */
 function clinicDateString(date = new Date()) {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: CLINIC_TIMEZONE,

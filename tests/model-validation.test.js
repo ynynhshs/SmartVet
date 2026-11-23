@@ -14,6 +14,10 @@ const mongoose = require('mongoose');
 let passed = 0;
 let failed = 0;
 
+/**
+ * Asserts that data passes Mongoose validation for Model, tallying a pass or
+ * reporting the returned validation error message.
+ */
 function expectValid(label, Model, data) {
     const validationError = new Model(data).validateSync();
 
@@ -28,6 +32,10 @@ function expectValid(label, Model, data) {
     console.log(`PASS: ${label}`);
 }
 
+/**
+ * Asserts that Model rejects data on expectedField, tallying a pass or reporting
+ * that the expected field error was missing.
+ */
 function expectInvalid(label, Model, data, expectedField) {
     const validationError = new Model(data).validateSync();
 

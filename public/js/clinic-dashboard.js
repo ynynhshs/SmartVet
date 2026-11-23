@@ -13,6 +13,15 @@ const registeredPetsCount = document.getElementById('registeredPetsCount');
 const overdueVaccineCount = document.getElementById('overdueVaccineCount');
 const dueSoonVaccineCount = document.getElementById('dueSoonVaccineCount');
 
+// Overall vaccination status donut elements.
+const vaccinationStatusDonut = document.getElementById('vaccinationStatusDonut');
+const vaccinationStatusTotal = document.getElementById('vaccinationStatusTotal');
+const vaccinationStatusUpToDate = document.getElementById('vaccinationStatusUpToDate');
+const vaccinationStatusDueSoon = document.getElementById('vaccinationStatusDueSoon');
+const vaccinationStatusOverdue = document.getElementById('vaccinationStatusOverdue');
+const registrationTrendChart = document.getElementById('registrationTrendChart');
+const registrationTrendSummary = document.getElementById('registrationTrendSummary');
+
 const approvalResultContainer = document.getElementById(
     'approvalResultContainer'
 );
@@ -333,6 +342,7 @@ function populateDevicePetOptions() {
 /* Sidebar navigation */
 
 
+/** Shows the requested dashboard section, updates the sidebar active state, and lazy-loads (or stops) the data each view needs. */
 function switchView(viewName) {
     if (!views[viewName]) return;
 
@@ -427,16 +437,182 @@ quickActionButtons.forEach((button) => {
 
 /* Overview statistics */
 
+/** Updates the pending-registration counter when its element exists. */
 function updatePendingCount(count) {
     if (pendingCount) {
         pendingCount.textContent = String(count);
     }
 }
 
+/** Updates the approved-pet counter text. */
 function updateApprovedCount(count) {
     approvedCount.textContent = String(count);
 }
 
+/**
+ * Draw the overall vaccination status ring: one slice per category sized as a
+ * share of every registered pet, with the total centred and counts in the legend.
+ */
+function renderVaccinationStatusDonut(status) {
+    if (!vaccinationStatusDonut) return;
+
+    const slices = [
+        { key: 'upToDate', color: '#0e8a66' },
+        { key: 'dueSoon', color: '#f0b429' },
+        { key: 'overdue', color: '#c9384f' }
+    ];
+
+    const total = Number(status?.total) || 0;
+    const values = {
+        upToDate: Number(status?.upToDate) || 0,
+        dueSoon: Number(status?.dueSoon) || 0,
+        overdue: Number(status?.overdue) || 0
+    };
+
+    // Drop the previous render's segments, keeping the track and title nodes.
+    vaccinationStatusDonut.querySelectorAll('circle.donut-slice').forEach(
+        (node) => node.remove()
+    );
+
+    let cursor = 0;
+
+    slices.forEach((slice) => {
+        const percent = total > 0 ? (values[slice.key] / total) * 100 : 0;
+
+        if (percent <= 0) return;
+
+        const circle = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'circle'
+        );
+
+        circle.setAttribute('class', 'donut-slice');
+        circle.setAttribute('cx', '21');
+        circle.setAttribute('cy', '21');
+        circle.setAttribute('r', '15.9155');
+        circle.setAttribute('fill', 'transparent');
+        circle.setAttribute('stroke', slice.color);
+
+        // The radius makes the circumference 100 units, so a slice length is
+        // simply its percentage; the offset walks each slice around the ring.
+        circle.setAttribute('stroke-dasharray', `${percent} ${100 - percent}`);
+        circle.setAttribute('stroke-dashoffset', String(100 - cursor + 25));
+
+        vaccinationStatusDonut.appendChild(circle);
+        cursor += percent;
+    });
+
+    vaccinationStatusTotal.textContent = String(total);
+    vaccinationStatusUpToDate.textContent = String(values.upToDate);
+    vaccinationStatusDueSoon.textContent = String(values.dueSoon);
+    vaccinationStatusOverdue.textContent = String(values.overdue);
+}
+
+/**
+ * Draw the monthly new-registration line chart from the trend payload: the
+ * y-axis scales to the busiest month, every month is labelled (including empty
+ * ones), and each point carries its exact count.
+ */
+function renderRegistrationTrendChart(trend) {
+    if (!registrationTrendChart) return;
+
+    const points = Array.isArray(trend) ? trend : [];
+    const counts = points.map((point) => Number(point.count) || 0);
+    const total = counts.reduce((sum, count) => sum + count, 0);
+
+    if (points.length === 0) {
+        registrationTrendChart.innerHTML = '';
+        if (registrationTrendSummary) {
+            registrationTrendSummary.textContent = 'No registration data yet.';
+        }
+        return;
+    }
+
+    const width = 320;
+    const height = 200;
+    const pad = { top: 26, right: 14, bottom: 26, left: 30 };
+    const plotWidth = width - pad.left - pad.right;
+    const plotHeight = height - pad.top - pad.bottom;
+
+    const rawMax = Math.max(...counts);
+    // Keep every gridline on a whole number: four steps of an even size.
+    const step = rawMax <= 4 ? 1 : Math.ceil(rawMax / 4);
+    const yMax = step * 4;
+
+    const xAt = (index) => (
+        points.length > 1
+            ? pad.left + (plotWidth / (points.length - 1)) * index
+            : pad.left + plotWidth / 2
+    );
+    const yAt = (value) =>
+        pad.top + plotHeight - (value / yMax) * plotHeight;
+
+    const parts = [
+        '<title id="registrationTrendChartTitle">',
+        'Line chart of new pet registrations per month',
+        '</title>'
+    ];
+
+    // Horizontal gridlines plus their value labels.
+    for (let tick = 0; tick <= 4; tick += 1) {
+        const value = step * tick;
+        const y = yAt(value);
+
+        parts.push(
+            `<line class="line-grid" x1="${pad.left}" y1="${y}"` +
+            ` x2="${width - pad.right}" y2="${y}"></line>`
+        );
+        parts.push(
+            `<text class="line-axis-label" x="${pad.left - 8}" y="${y + 3}"` +
+            ` text-anchor="end">${value}</text>`
+        );
+    }
+
+    const coordinates = points.map((_point, index) => ({
+        x: xAt(index),
+        y: yAt(counts[index])
+    }));
+
+    const linePath = coordinates
+        .map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`)
+        .join(' ');
+
+    if (coordinates.length > 1) {
+        const areaPath = `${linePath}` +
+            ` L ${coordinates[coordinates.length - 1].x} ${yAt(0)}` +
+            ` L ${coordinates[0].x} ${yAt(0)} Z`;
+
+        parts.push(`<path class="line-area" d="${areaPath}"></path>`);
+    }
+
+    parts.push(`<path class="line-path" d="${linePath}"></path>`);
+
+    coordinates.forEach((coord, index) => {
+        parts.push(
+            `<circle class="line-point" cx="${coord.x}" cy="${coord.y}" r="3.5"></circle>`
+        );
+        parts.push(
+            `<text class="line-value" x="${coord.x}" y="${coord.y - 9}"` +
+            ` text-anchor="middle">${counts[index]}</text>`
+        );
+        parts.push(
+            `<text class="line-axis-label" x="${coord.x}" y="${height - 8}"` +
+            ` text-anchor="middle">${points[index].label}</text>`
+        );
+    });
+
+    registrationTrendChart.innerHTML = parts.join('');
+
+    if (registrationTrendSummary) {
+        const peakIndex = counts.indexOf(rawMax);
+
+        registrationTrendSummary.textContent =
+            `${total} new registration${total === 1 ? '' : 's'} in the last six months` +
+            ` · busiest month: ${points[peakIndex].label} (${rawMax}).`;
+    }
+}
+
+/** Fetches dashboard summary counts and writes them into the overview stat elements; logs failures to the console. */
 async function loadDashboardOverview() {
     if (!dashboardReady) return;
 
@@ -458,6 +634,9 @@ async function loadDashboardOverview() {
 
         dueSoonVaccineCount.textContent =
             String(data.summary.dueSoonVaccines ?? 0);
+
+        renderVaccinationStatusDonut(data.summary.vaccinationStatus);
+        renderRegistrationTrendChart(data.summary.registrationTrend);
     } catch (error) {
         console.error('Unable to load clinic dashboard overview:', error);
     }
@@ -465,6 +644,7 @@ async function loadDashboardOverview() {
 
 /* Pending registrations */
 
+/** Builds a pending-registration card (photo, details, owner, status, and approve/verify actions) and returns the article element. */
 function createPetCard(pet) {
     const card = document.createElement('article');
     card.className = 'pet-card';
@@ -550,6 +730,7 @@ function createPetCard(pet) {
     return card;
 }
 
+/** Fetches pending registrations, renders their cards, updates the pending count, and shows loading and error messages. */
 async function loadPendingPets() {
     if (!dashboardReady) return;
 
@@ -598,6 +779,7 @@ async function loadPendingPets() {
     }
 }
 
+/** Confirms, then approves a registration via PATCH, shows the returned Pet ID/QR result, and reloads the pending and approved lists. */
 async function approvePet(petId, actionsContainer) {
     const confirmed = window.confirm(
         'Approve this pet registration? This will generate an official Pet ID and QR code.'
@@ -642,6 +824,7 @@ async function approvePet(petId, actionsContainer) {
     }
 }
 
+/** Prompts for a reason and PATCHes the registration into the needs-verification state, then reloads the pending list. */
 async function requestVerification(petId, actionsContainer) {
     const reason = window.prompt(
         'Explain why this registration needs verification:'
@@ -688,6 +871,7 @@ async function requestVerification(petId, actionsContainer) {
     }
 }
 
+/** Renders the approval-result panel with the official Pet ID and, when present, a downloadable QR code image. */
 function showApprovalResult(data) {
     const pet = data.pet || data;
 
@@ -742,6 +926,7 @@ function showApprovalResult(data) {
 
 /* Approved pets */
 
+/** Updates the approved-pet detail line for the currently selected pet, or prompts the user to select one. */
 function updateSelectedPetInfo() {
     const pet = approvedPets.find(
         (item) => item.id === approvedPetSelect.value
@@ -758,6 +943,7 @@ function updateSelectedPetInfo() {
         `Owner: ${pet.owner?.fullName || 'Unavailable'}.`;
 }
 
+/** Fetches approved pets, rebuilds the selection dropdown while preserving the prior selection, and loads the selected pet's vaccination history. */
 async function loadApprovedPets() {
     if (!dashboardReady) return;
 
@@ -847,6 +1033,7 @@ async function loadApprovedPets() {
 
 /* Vaccination history */
 
+/** Fetches and renders vaccination cards for the given approved pet, with empty, loading, and error states. */
 async function loadVaccinationHistory(petId) {
     vaccinationHistory.replaceChildren();
 
@@ -1055,6 +1242,7 @@ administeredDateInput.addEventListener('change', () => {
 
 /* Device Management: load registered devices */
 
+/** Fetches registered devices and renders detail cards with pet-assignment and status controls; assignment and status changes are only enabled for active devices. */
 async function loadDevices() {
     if (!dashboardReady || !devicesList) return;
 
@@ -1105,6 +1293,7 @@ async function loadDevices() {
             heading.append(title, status);
             card.appendChild(heading);
 
+            /** Appends a labelled detail paragraph (strong label plus value span) to a device card. */
             function addDetail(label, value) {
                 const paragraph = document.createElement('p');
                 paragraph.className = 'device-detail';
@@ -1354,6 +1543,7 @@ async function loadDevices() {
 /* Device Management: register a
 /* Device Management: load registered devices */
 
+/** Fetches registered devices and renders detail cards with pet-assignment and status controls; assignment and status changes are only enabled for active devices. */
 async function loadDevices() {
     if (!dashboardReady || !devicesList) return;
 
@@ -1404,6 +1594,7 @@ async function loadDevices() {
             heading.append(title, status);
             card.appendChild(heading);
 
+            /** Appends a labelled detail paragraph (strong label plus value span) to a device card. */
             function addDetail(label, value) {
                 const paragraph = document.createElement('p');
                 paragraph.className = 'device-detail';
@@ -1652,6 +1843,7 @@ async function loadDevices() {
 
 let clinicReportData = null;
 
+/** Formats a report cell for display, rendering ISO-like date values as locale dates and blanks as an em dash. */
 function formatReportCell(value) {
     if (value === null || value === undefined || value === '') return '—';
     const date = new Date(value);
@@ -1661,6 +1853,7 @@ function formatReportCell(value) {
         : String(value);
 }
 
+/** Renders the clinic report results as a table (or a "no records" note) and flags when the server truncated the rows. */
 function renderClinicReport(report) {
     if (!clinicReportResults) return;
     clinicReportResults.replaceChildren();
@@ -1695,6 +1888,7 @@ function renderClinicReport(report) {
     }
 }
 
+/** Reads the report form filters, requests the report from the API, renders it, and keeps the data for CSV export. */
 async function loadClinicReport() {
     if (!clinicReportForm) return;
     const params = new URLSearchParams({ type: clinicReportType.value });
@@ -1743,6 +1937,7 @@ if (clinicReportForm) {
 if (exportClinicReportButton) {
     exportClinicReportButton.addEventListener('click', () => {
         if (!clinicReportData) return;
+/** Escapes a value for CSV output, doubling quotes and prefixing formula-like text with an apostrophe. */
         const escapeCsv = (value) => {
             let text = value === null || value === undefined ? '' : String(value);
             if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
@@ -1767,6 +1962,7 @@ if (exportClinicReportButton) {
 
 /* Device Management: register a device */
 
+/** Validates and submits the device registration form, displays the one-time device token, and warns before replacing a token still on screen. */
 async function handleDeviceRegistration(event) {
     event.preventDefault();
 
@@ -1840,6 +2036,7 @@ async function handleDeviceRegistration(event) {
     }
 }
 
+/** Fetches feeding events (optionally filtered by status) and renders cards with schedule, portion, and timing details. */
 async function loadFeedingEvents() {
     if (!dashboardReady || !feedingEventsHistory) return;
 
@@ -1937,6 +2134,7 @@ async function loadFeedingEvents() {
             const details = document.createElement('dl');
             details.className = 'feeding-event-details';
 
+            /** Appends a labelled definition-list row (dt/dd) to a feeding-event details block. */
             function addDetail(label, value) {
                 const item = document.createElement('div');
                 item.className = 'feeding-event-detail';
@@ -2013,6 +2211,7 @@ async function loadFeedingEvents() {
 }
 
 // Automatically start the camera when Scan Pet QR opens.
+/** Resets the QR workspace and starts the camera, requesting permission and reporting decoder and permission errors. */
 async function startQrScanner() {
     if (!qrCameraVideo || !qrScannerCanvas) return;
     if (qrCameraStream) return;
@@ -2091,6 +2290,7 @@ async function startQrScanner() {
 }
 
 // Continuously decode frames from the camera.
+/** Reads one camera frame, decodes it with jsQR, and either handles a detected code or schedules the next frame. */
 function scanQrCameraFrame() {
     if (
         !qrCameraStream ||
@@ -2140,6 +2340,7 @@ function scanQrCameraFrame() {
 }
 
 // Retrieve the pet only after the backend validates its QR identifier.
+/** Validates the scanned identifier format, looks the pet up through the clinic API, and shows the result or an error. */
 async function handleScannedPetQr(identifier) {
     if (!/^[a-fA-F0-9]{64}$/.test(identifier)) {
         if (qrScannerStatus) {
@@ -2201,6 +2402,7 @@ async function handleScannedPetQr(identifier) {
 }
 
 // Display the pet details returned by the authenticated clinic API.
+/** Fills the QR pet profile panel with the pet's details and status styling, and loads its photo when available. */
 function displayScannedPet(pet) {
     if (!qrPetProfilePanel) return;
 
@@ -2235,6 +2437,7 @@ function displayScannedPet(pet) {
 }
 
 // Display the personal information of the scanned pet's owner.
+/** Fills the owner-details dialog from the scanned pet's owner record, including the profile photo, and opens it. */
 function openQrOwnerDetails() {
     if (!currentQrPet || !qrOwnerDetailsDialog) {
         return;
@@ -2250,6 +2453,7 @@ function openQrOwnerDetails() {
     }
 
     // 1. Populate the text
+/** Sets an element's text to a value or "Not provided", ignoring missing elements. */
     const setDetail = (element, value) => {
         if (element) {
             element.textContent = value || 'Not provided';
@@ -2290,6 +2494,7 @@ function openQrOwnerDetails() {
 }
 
 // NEW FUNCTION: Load the scanned owner's photo from the clinic endpoint
+/** Fetches the owner's photo with the session token and shows it, falling back to the placeholder on failure. */
 async function loadScannedOwnerPhoto(photoEndpoint) {
     try {
         const response = await fetch(photoEndpoint, {
@@ -2478,6 +2683,7 @@ if (qrVaccinationForm) {
 }
 
 // Load vaccination history for the currently scanned pet.
+/** Fetches and renders vaccination history cards for the currently scanned pet. */
 async function loadQrVaccinationHistory() {
     if (!currentQrPet || !currentQrPet.id || !qrVaccinationHistoryList) {
         return;
@@ -2620,6 +2826,7 @@ document.querySelectorAll('[data-close-dialog]').forEach((button) => {
 
 // Load the pet photograph through the protected clinic photo endpoint.
 // Load the pet photograph through the protected clinic photo endpoint.
+/** Fetches the scanned pet's photo with the session token, revoking any previous object URL before showing the new one. */
 async function loadScannedPetPhoto(petId) {
     try {
         const response = await fetch(
@@ -2653,6 +2860,7 @@ async function loadScannedPetPhoto(petId) {
 }
 
 // Stop the camera and release its hardware tracks.
+/** Cancels the decode loop, stops all camera tracks, and clears the video stream. */
 function stopQrScanner() {
     if (qrAnimationFrameId !== null) {
         cancelAnimationFrame(qrAnimationFrameId);
@@ -2678,6 +2886,7 @@ if (qrScanAnotherButton) {
 }
 
 
+/** Verifies the signed-in account via /api/auth/me, gates administrator-only UI, and kicks off the initial dashboard loads. */
 async function verifyVeterinarySession() {
     if (!getToken()) {
         logout();
@@ -2786,6 +2995,7 @@ if (copyDeviceTokenButton) {
 
 
 /* Sidebar collapse/expand */
+/** Restores the persisted sidebar collapsed state and wires the toggle to update it. */
 (function initializeClinicSidebarToggle() {
     const shell = document.querySelector('.clinic-shell');
     const toggle = document.getElementById('clinicSidebarToggle');
@@ -2794,6 +3004,7 @@ if (copyDeviceTokenButton) {
 
     const storageKey = 'smartvetClinicSidebarCollapsed';
 
+/** Applies the collapsed class and updates the toggle's expanded state, label, and title. */
     function applyCollapsedState(collapsed) {
         shell.classList.toggle('sidebar-collapsed', collapsed);
 
@@ -2817,16 +3028,19 @@ if (copyDeviceTokenButton) {
 
 
 /* SmartVet shared light/dark theme (System Settings > Appearance) */
+/** Restores the persisted light/dark theme and wires the theme option buttons. */
 (function initializeClinicTheme() {
     const storageKey = 'smartvetTheme';
     const optionButtons = Array.from(
         document.querySelectorAll('[data-theme-option]')
     );
 
+/** Returns the active theme ("dark" or "light") from the body's data attribute. */
     function currentTheme() {
         return document.body.dataset.theme === 'dark' ? 'dark' : 'light';
     }
 
+    /** Sets the body theme attribute and marks the matching option button as selected. */
     function applyTheme(theme) {
         const isDark = theme === 'dark';
 
@@ -2928,16 +3142,19 @@ const ADMIN_ROLE_LABELS = {
 
 let veterinaryUsers = [];
 
+/** Maps a role key to its display label, falling back to the raw role or "Unknown". */
 function adminRoleLabel(role) {
     return ADMIN_ROLE_LABELS[role] || role || 'Unknown';
 }
 
 // True when the signed-in account may use the administration areas.
+/** Returns true when the stored session user has an administrator-only role. */
 function isAdministratorSession() {
     const user = SmartVetSession.getUser();
     return Boolean(user && ADMINISTRATOR_ONLY_ROLES.includes(user.role));
 }
 
+/** Opens a dialog with showModal() when supported, otherwise falls back to the open attribute. */
 function openAdminDialog(dialog) {
     if (!dialog) return;
 
@@ -2948,6 +3165,7 @@ function openAdminDialog(dialog) {
     }
 }
 
+/** Closes a dialog with close() when supported, otherwise removes the open attribute. */
 function closeAdminDialog(dialog) {
     if (!dialog) return;
 
@@ -2964,6 +3182,7 @@ document.querySelectorAll('[data-close-dialog]').forEach((button) => {
     });
 });
 
+/** Sets a select's value, falling back to the first option when the value is not offered. */
 function setAdminSelectValue(select, value) {
     if (!select) return;
 
@@ -2977,6 +3196,7 @@ function setAdminSelectValue(select, value) {
     }
 }
 
+/** Appends a table cell with optional class and data-label, rendering empty values as "Not provided". */
 function textCell(tableRow, value, className = '', label = '') {
     const cell = document.createElement('td');
 
@@ -2996,6 +3216,7 @@ function textCell(tableRow, value, className = '', label = '') {
 
 /* --- User management ----------------------------------------------------- */
 
+/** Renders the veterinary staff table from the cached users array, including edit, password-reset, and delete actions. */
 function renderVeterinaryUsers() {
     if (!vetUsersTableBody) return;
 
@@ -3069,6 +3290,7 @@ function renderVeterinaryUsers() {
     });
 }
 
+/** Fetches the staff account list, caches it, and re-renders the table with loading and error states. */
 async function loadVeterinaryUsers() {
     if (!dashboardReady || !vetUsersTableBody) return;
 
@@ -3107,6 +3329,7 @@ async function loadVeterinaryUsers() {
     }
 }
 
+/** Prepares the add/edit staff dialog for a user (or a blank form) and opens it. */
 function openVetUserDialog(user = null) {
     if (!vetUserForm) return;
 
@@ -3143,6 +3366,7 @@ function openVetUserDialog(user = null) {
     openAdminDialog(vetUserDialog);
 }
 
+/** Validates the staff form and creates or updates the account, then closes the dialog and reloads the list. */
 async function submitVeterinaryUser(event) {
     event.preventDefault();
 
@@ -3200,6 +3424,7 @@ async function submitVeterinaryUser(event) {
     }
 }
 
+/** Prepares the reset-password dialog for a user and opens it. */
 function openVetPasswordDialog(user) {
     if (!vetPasswordForm || !user) return;
 
@@ -3213,6 +3438,7 @@ function openVetPasswordDialog(user) {
     openAdminDialog(vetPasswordDialog);
 }
 
+/** Validates and submits a new password for a staff account, then closes the dialog. */
 async function submitVeterinaryPassword(event) {
     event.preventDefault();
 
@@ -3251,6 +3477,7 @@ async function submitVeterinaryPassword(event) {
     }
 }
 
+/** Confirms and deletes a staff account (never the signed-in administrator), then reloads the list. */
 async function deleteVeterinaryUser(user) {
     if (!user || user.id === currentAdministratorId) return;
 
@@ -3279,6 +3506,7 @@ async function deleteVeterinaryUser(user) {
 
 /* --- System settings ----------------------------------------------------- */
 
+/** Loads administrator settings into the form; non-administrators get an empty form and never call the admin endpoint. */
 async function loadSystemSettings() {
     if (!dashboardReady || !clinicSettingsForm) return;
 
@@ -3341,6 +3569,7 @@ async function loadSystemSettings() {
     }
 }
 
+/** Collects the settings form values and PUTs them to the admin settings endpoint. */
 async function saveSystemSettings() {
     const payload = {
         clinicName: document.getElementById('clinicName').value.trim(),
@@ -3379,6 +3608,7 @@ async function saveSystemSettings() {
 
 /* --- Global IoT device registry ----------------------------------------- */
 
+/** Renders the active, disabled, and revoked device counts as stat cards. */
 function renderDeviceRegistryStats(summary) {
     if (!deviceRegistryStats) return;
 
@@ -3405,6 +3635,7 @@ function renderDeviceRegistryStats(summary) {
     });
 }
 
+/** Renders the global device registry table, including type, assigned pet, status, last-seen, and remove controls. */
 function renderDeviceRegistry(devices) {
     if (!deviceRegistryTableBody) return;
 
@@ -3477,6 +3708,7 @@ function renderDeviceRegistry(devices) {
     });
 }
 
+/** Fetches the global device registry with status and type filters and renders the summary and table. */
 async function loadDeviceRegistry() {
     if (!dashboardReady || !deviceRegistryTableBody) return;
 
@@ -3522,6 +3754,7 @@ async function loadDeviceRegistry() {
     }
 }
 
+/** Confirms and deletes a device from the global registry, then reloads the list. */
 async function removeRegistryDevice(device) {
     if (!device) return;
 
@@ -3551,6 +3784,7 @@ async function removeRegistryDevice(device) {
 
 /* --- System audit logs --------------------------------------------------- */
 
+/** Renders the audit overview stat cards from the system counts. */
 function renderAuditOverview(overview) {
     if (!auditOverviewStats) return;
 
@@ -3581,6 +3815,7 @@ function renderAuditOverview(overview) {
 }
 
 /* Turns machine values such as SYSTEM_SETTINGS_UPDATED into readable labels. */
+/** Converts SCREAMING_SNAKE_CASE values into readable title-case labels. */
 function humanizeAuditValue(value) {
     return String(value || 'none')
         .split('_')
@@ -3588,6 +3823,7 @@ function humanizeAuditValue(value) {
         .join(' ');
 }
 
+/** Renders audit log rows with humanized action and entity values, or an empty-state row. */
 function renderAuditLogs(logs) {
     if (!auditLogsTableBody) return;
 
@@ -3619,6 +3855,7 @@ function renderAuditLogs(logs) {
     });
 }
 
+/** Fetches audit logs with the selected filters and renders the system overview and log table. */
 async function loadAuditLogs() {
     if (!dashboardReady || !auditLogsTableBody) return;
 
@@ -3713,6 +3950,7 @@ if (applyAuditFiltersButton) {
 // Guard the administration sections on load: if the signed-in account is not
 // an administrator, hide the sidebar entries and the sections themselves so
 // a stale hidden panel can never be opened by scripting.
+/** Hides administrator-only navigation and sections when the session is not an administrator. */
 (function initializeAdministrationAccess() {
     if (isAdministratorSession()) return;
 

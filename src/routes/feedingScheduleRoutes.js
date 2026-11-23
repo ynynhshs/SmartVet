@@ -19,6 +19,10 @@ const router = express.Router();
 // Only authenticated veterinary personnel can configure schedules.
 router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
+/**
+ * Write a 400 JSON response with field-level validation errors and return false,
+ * or return true when the request is valid.
+ */
 function validateRequest(req, res) {
     const errors = validationResult(req);
 
@@ -38,6 +42,10 @@ function validateRequest(req, res) {
     return false;
 }
 
+/**
+ * Shape a FeedingSchedule document for responses, resolving populated pet and
+ * feeder plus the cross-collection `createdBy` actor.
+ */
 function serializeSchedule(schedule) {
     const pet = schedule.petId;
     const feeder = schedule.deviceId;
@@ -73,6 +81,10 @@ function serializeSchedule(schedule) {
 
 // GET /api/clinic/feeding-schedules
 // List the latest feeding schedules.
+/**
+ * List the latest feeding schedules (max 200, newest first) with pet, feeder and
+ * creator resolved.
+ */
 router.get('/', async (req, res, next) => {
     try {
         const schedules = await FeedingSchedule.find({})
@@ -96,6 +108,11 @@ router.get('/', async (req, res, next) => {
 
 // POST /api/clinic/feeding-schedules
 // Create a schedule for a verified pet and its assigned active feeder.
+/**
+ * Create a feeding schedule for an approved pet and an active feeder already
+ * assigned to that pet. Validates time/day/amount inputs, defaults the timezone
+ * to Asia/Manila, and writes an audit entry.
+ */
 router.post(
     '/',
     [

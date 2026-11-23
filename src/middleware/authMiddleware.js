@@ -7,6 +7,11 @@ const {
 } = require('../services/authService');
 
 // Require a valid token and an active user account.
+/**
+ * Require a Bearer access token and load the matching active account from
+ * MongoDB, preferring the owner collection and falling back to VeterinaryUser.
+ * Attaches a trusted `req.user` (role read from the database) and `req.auth`.
+ */
 async function requireAuth(req, res, next) {
     const authorization = req.get('authorization') || '';
     const match = authorization.match(/^Bearer\s+(\S+)$/i);
@@ -77,7 +82,12 @@ async function requireAuth(req, res, next) {
 
 // Restrict a route to one or more user roles.
 // Example: authorizeRoles('admin', 'veterinary')
+/**
+ * Return middleware that allows only the listed roles through. Must run after
+ * `requireAuth`; responds 401 without `req.user` and 403 for other roles.
+ */
 function authorizeRoles(...allowedRoles) {
+    // Express middleware handed to the router.
     return function (req, res, next) {
         if (!req.user) {
             return res.status(401).json({

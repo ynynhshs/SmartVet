@@ -36,6 +36,11 @@ const router = express.Router();
 
 // Shape a user document for the owner profile responses so the account page
 // always receives every personal detail captured during registration.
+/**
+ * Shape a user document for owner profile responses, converting Mongoose
+ * documents to plain objects and exposing only safe fields (photo filenames and
+ * the PIN hash are reduced to booleans).
+ */
 function ownerProfilePayload(user) {
     const doc = user && user.toObject ? user.toObject() : user;
 
@@ -74,6 +79,10 @@ const ALLOWED_PHOTO_TYPES = {
     'image/webp': '.webp'
 };
 
+/**
+ * Build a multer upload for a single Cloudinary-stored photo, accepting only
+ * JPG/PNG/WebP up to 5 MB. Used for pet and profile photos.
+ */
 function createPhotoUpload(folder) {
     return multer({
         storage: new CloudinaryStorage({
@@ -97,6 +106,10 @@ function createPhotoUpload(folder) {
 
 // 2. Turn multer failures (wrong file type, oversized photo) into a readable
 // 400 instead of letting them fall through to the 500 handler.
+/**
+ * Wrap a multer upload so size, file-count and file-type failures become
+ * readable 400 JSON responses instead of reaching the 500 handler.
+ */
 function createPhotoUploadHandler(upload, field, label) {
     return (req, res, next) => {
         upload.single(field)(req, res, (error) => {
@@ -133,6 +146,10 @@ const handleProfilePhotoUpload = createPhotoUploadHandler(profilePhotoUpload, 'p
 router.use(requireAuth, authorizeRoles('owner'));
 
 /* GET /api/owner/profile/photo */
+/**
+ * Serve the authenticated owner's own profile photo, redirecting to Cloudinary
+ * or streaming the legacy local file, and 404ing when none exists.
+ */
 router.get('/profile/photo', async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id)
@@ -176,6 +193,10 @@ router.get('/profile/photo', async (req, res, next) => {
 });
 
 /* POST /api/owner/profile/photo */
+/**
+ * Upload and store the authenticated owner's profile photo on Cloudinary and
+ * return the endpoint that serves it.
+ */
 router.post('/profile/photo', handleProfilePhotoUpload, async (req, res, next) => {
     if (!req.file) {
         return res.status(400).json({ success: false, message: 'Please select a profile photo.' });
@@ -206,6 +227,9 @@ router.post('/profile/photo', handleProfilePhotoUpload, async (req, res, next) =
 });
 
 // GET /api/owner/profile
+/**
+ * Return the authenticated owner's personal profile details and PIN status.
+ */
 router.get('/profile', async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id)
@@ -227,6 +251,10 @@ router.get('/profile', async (req, res, next) => {
 
 // PATCH /api/owner/profile
 // Update only the authenticated owner's personal information.
+/**
+ * Update the authenticated owner's personal information. Emails are lowercased
+ * and a duplicate address returns 409; the response is the full profile.
+ */
 router.patch(
     '/profile',
     [
@@ -302,6 +330,9 @@ router.patch(
 
 // POST /api/owner/pin
 // Create or replace the owner's app-lock PIN from the Settings page.
+/**
+ * Create or replace the authenticated owner's 6-digit app-lock PIN hash.
+ */
 router.post(
     '/pin',
     [
@@ -342,6 +373,10 @@ router.post(
 
 // DELETE /api/owner/pin
 // Removes the app-lock PIN so the owner must sign in with email and password.
+/**
+ * Remove the authenticated owner's app-lock PIN so email/password sign-in is
+ * required again.
+ */
 router.delete('/pin', async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id);
@@ -365,6 +400,10 @@ router.delete('/pin', async (req, res, next) => {
 });
 
 // GET /api/owner/pets/:petId/photo
+/**
+ * Serve a photo for a pet owned by the authenticated user, redirecting to
+ * Cloudinary or streaming the legacy local file.
+ */
 router.get('/pets/:petId/photo', async (req, res, next) => {
     try {
         if (!mongoose.isValidObjectId(req.params.petId)) {
@@ -413,6 +452,10 @@ router.get('/pets/:petId/photo', async (req, res, next) => {
 });
 
 // GET /api/owner
+/**
+ * Owner area access check. Confirms router-level authentication and echoes the
+ * trusted owner id, name and role.
+ */
 router.get('/', (req, res) => {
     return res.status(200).json({
         success: true,
@@ -423,6 +466,10 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/owner/pets
+/**
+ * Submit a pet registration for veterinary review. Stores an optional Cloudinary
+ * photo and starts the pet in `pending` status.
+ */
 router.post('/pets', handlePetPhotoUpload, [
     body('name').isString().trim().notEmpty().isLength({ max: 100 }),
     body('species').isString().trim().toLowerCase().isIn(['dog', 'cat', 'rabbit', 'bird', 'other']),
@@ -483,6 +530,10 @@ router.post('/pets', handlePetPhotoUpload, [
 });
 
 // GET /api/owner/pets
+/**
+ * List the authenticated owner's pets (newest first). `petCode` is included
+ * only once the pet is approved.
+ */
 router.get('/pets', async (req, res, next) => {
     try {
         const pets = await Pet.find({ ownerUserId: req.user.id })
@@ -514,6 +565,10 @@ router.get('/pets', async (req, res, next) => {
 
 // GET /api/owner/vaccinations
 // Return vaccination records only for pets owned by the authenticated user.
+/**
+ * Return vaccination records for approved pets owned by the authenticated user,
+ * sorted by next due date then administration date.
+ */
 router.get('/vaccinations', async (req, res, next) => {
     try {
         const pets = await Pet.find({
@@ -569,6 +624,10 @@ router.get('/vaccinations', async (req, res, next) => {
 });
 
 // GET /api/owner/pets/qr/:identifier
+/**
+ * Look up an approved pet by its 64-hex QR identifier, scoped to the
+ * authenticated owner's own pets.
+ */
 router.get('/pets/qr/:identifier', async (req, res, next) => {
     const identifier = req.params.identifier;
     if (!/^[a-fA-F0-9]{64}$/.test(identifier)) {
@@ -605,6 +664,10 @@ router.get('/pets/qr/:identifier', async (req, res, next) => {
 });
 
 // GET /api/owner/pets/:petId/qr-image
+/**
+ * Return a QR data URL for an approved pet owned by the authenticated user,
+ * encoding only the stored random QR identifier.
+ */
 router.get('/pets/:petId/qr-image', async (req, res, next) => {
     const { petId } = req.params;
     if (!mongoose.isValidObjectId(petId)) {
@@ -637,6 +700,10 @@ router.get('/pets/:petId/qr-image', async (req, res, next) => {
 });
 
 // GET /api/owner/pets/:petId/vaccinations
+/**
+ * Return the vaccination history of an approved pet owned by the authenticated
+ * user, newest first, with administrator names resolved.
+ */
 router.get('/pets/:petId/vaccinations', async (req, res, next) => {
     const { petId } = req.params;
     if (!mongoose.isValidObjectId(petId)) {
@@ -692,6 +759,10 @@ router.get('/pets/:petId/vaccinations', async (req, res, next) => {
 });
 
 // GET /api/owner/feeding-events
+/**
+ * List feeding events for the authenticated owner's pets (newest first, max
+ * 200), optionally filtered by pet or status.
+ */
 router.get('/feeding-events', async (req, res, next) => {
     try {
         const allowedStatuses = ['running', 'completed', 'failed', 'cancelled'];
@@ -752,6 +823,11 @@ router.get('/feeding-events', async (req, res, next) => {
 });
 
 // GET /api/owner/activity-records
+/**
+ * List collar activity records for the owner's pets with optional pet, activity
+ * and inclusive date-range filters. Supports `limit`/`skip` paging (max 200) and
+ * returns both the page and the total count.
+ */
 router.get('/activity-records', async (req, res, next) => {
     try {
         const allowedActivities = ['walking', 'running', 'resting', 'sleeping', 'inactive', 'unknown'];
@@ -852,6 +928,10 @@ router.get('/activity-records', async (req, res, next) => {
 // GET /api/owner/push-subscription
 // Tells the owner dashboard whether push is configured and if this account
 // already has a browser subscribed.
+/**
+ * Report whether push is configured (VAPID keys) and whether the owner has at
+ * least one stored browser subscription.
+ */
 router.get('/push-subscription', async (req, res, next) => {
     try {
         const subscriptionCount = await PushSubscription.countDocuments({
@@ -872,6 +952,10 @@ router.get('/push-subscription', async (req, res, next) => {
 
 // POST /api/owner/push-subscription
 // Stores (or refreshes) a browser push subscription for the signed-in owner.
+/**
+ * Validate and upsert a browser push subscription keyed by its endpoint so a
+ * refresh does not create duplicates.
+ */
 router.post(
     '/push-subscription',
     async (req, res, next) => {
@@ -932,6 +1016,10 @@ router.post(
 
 // DELETE /api/owner/push-subscription
 // Removes one subscription (when an endpoint is supplied) or all of them.
+/**
+ * Delete one subscription when an `endpoint` is supplied, otherwise delete all
+ * of the owner's subscriptions.
+ */
 router.delete('/push-subscription', async (req, res, next) => {
     try {
         const endpoint = req.body && req.body.endpoint;
@@ -955,6 +1043,9 @@ router.delete('/push-subscription', async (req, res, next) => {
 });
 
 // GET /api/owner/notifications
+/**
+ * Return the owner's 50 most recent notifications plus the unread count.
+ */
 router.get('/notifications', async (req, res, next) => {
     try {
         const [notifications, unreadCount] = await Promise.all([
@@ -994,6 +1085,10 @@ router.get('/notifications', async (req, res, next) => {
 });
 
 // PATCH /api/owner/notifications/:notificationId/read
+/**
+ * Mark one of the owner's notifications as read (idempotent) and return its new
+ * read state.
+ */
 router.patch('/notifications/:notificationId/read', async (req, res, next) => {
     const { notificationId } = req.params;
     if (!mongoose.isValidObjectId(notificationId)) {

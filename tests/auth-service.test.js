@@ -10,9 +10,17 @@ const {
     verifyAccessToken
 } = require('../src/services/authService');
 
+/**
+ * Runs the authentication service suite end to end, covering password hashing
+ * and comparison plus access-token creation, verification, and expiry.
+ */
 async function runTests() {
     let passed = 0;
 
+    /**
+     * Asserts the condition, logs a PASS line, and increments the passing-test
+     * counter reported in the final summary.
+     */
     function check(description, condition) {
         assert.ok(condition, description);
         passed++;
@@ -84,6 +92,7 @@ async function runTests() {
     console.log('\nAll authentication service tests passed.');
 }
 
+// Reports which assertion failed and marks the process as failed for CI.
 runTests().catch((error) => {
     console.error('\nAuthentication service test failed.');
     console.error('Error type:', error.name || 'Error');

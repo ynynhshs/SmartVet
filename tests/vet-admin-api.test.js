@@ -22,36 +22,52 @@ const authMiddleware = require('../src/middleware/authMiddleware');
 let requireAuth = authMiddleware.requireAuth;
 
 
+/**
+ * Chainable stand-in for a Mongoose query: builder methods return the stub
+ * itself, while lean()/then() settle with the supplied fixture value.
+ */
 class MockQuery {
+    /** Stores the fixture value this stubbed query resolves with. */
     constructor(value) {
         this.value = value;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     select() {
         return this;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     populate() {
         return this;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     sort() {
         return this;
     }
 
+    /** Chainable no-op that returns the stub so routes can keep chaining builders. */
     limit() {
         return this;
     }
 
+    /** Resolves the chain with the fixture value, mimicking Mongoose's lean(). */
     lean() {
         return Promise.resolve(this.value);
     }
 
+    /** Makes the stub thenable so awaited queries settle on the fixture value. */
     then(resolve, reject) {
         return Promise.resolve(this.value).then(resolve, reject);
     }
 }
 
+/**
+ * Verifies administrator-only access to the vet admin APIs: staff role gates,
+ * user listing/creation/update rules, settings validation, device filtering,
+ * audit-log queries, and the audit entries written along the way.
+ */
 test('veterinary administration APIs enforce the administrator role', async () => {
     const administratorId = new mongoose.Types.ObjectId();
     const staffId = new mongoose.Types.ObjectId();
@@ -158,6 +174,7 @@ test('veterinary administration APIs enforce the administrator role', async () =
         return next();
     });
 
+    // Replaces the database-backed lookups below with deterministic in-memory stubs.
     User.exists = async () => null;
     User.countDocuments = async () => 0;
 
@@ -170,6 +187,7 @@ test('veterinary administration APIs enforce the administrator role', async () =
         : null;
     VeterinaryUser.countDocuments = async () => 1;
 
+    // Captures the payload handed to account creation so route mapping can be asserted.
     VeterinaryUser.createAccount = async (data) => {
         createdPayload = data;
         return {
@@ -183,6 +201,7 @@ test('veterinary administration APIs enforce the administrator role', async () =
 
     VeterinaryUser.findOne = () => new MockQuery(null);
 
+    // Captures the update document so the PATCH field mapping can be asserted.
     VeterinaryUser.findByIdAndUpdate = async (id, update) => {
         updatedPayload = update;
         return { ...createdAccount, ...update.$set };
@@ -199,6 +218,7 @@ test('veterinary administration APIs enforce the administrator role', async () =
 
     AuditLog.find = () => new MockQuery([]);
     AuditLog.countDocuments = async () => 0;
+    // Collects audit entries in memory so the audit trail can be inspected.
     AuditLog.create = async (entry) => {
         auditEntries.push(entry);
         return entry;
@@ -217,11 +237,13 @@ test('veterinary administration APIs enforce the administrator role', async () =
     const app = express();
     app.use(express.json());
     app.use('/api/clinic/admin', adminRoutes);
+    // Converts any thrown error into a 500 JSON response instead of crashing the test.
     app.use((error, _req, res, _next) =>
         res.status(500).json({ success: false, message: error.message })
     );
 
     const server = app.listen(0);
+    // Closes the ephemeral server and restores every stubbed model method.
     after(() => {
         server.close();
         User.findById = originals.userFindById;
@@ -248,6 +270,7 @@ test('veterinary administration APIs enforce the administrator role', async () =
         Notification.countDocuments = originals.notificationCount;
     });
 
+    // Waits until the ephemeral port is listening before issuing requests.
     await new Promise((resolve) => server.once('listening', resolve));
     const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
@@ -474,6 +497,7 @@ test('veterinary administration APIs enforce the administrator role', async () =
         'saving settings must write an audit entry'
     );
 
+    // Confirms every recorded audit entry names the administrator and the expected entity type.
     auditEntries.forEach((entry) => {
         assert.equal(entry.source, 'user');
         assert.equal(entry.actorUserId.toString(), administratorId.toString());

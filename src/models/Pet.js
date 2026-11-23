@@ -55,6 +55,7 @@ const petSchema = new mongoose.Schema(
             type: Date,
             default: undefined,
             validate: {
+                // Reject a date of birth later than today in the clinic timezone.
                 validator: function (value) {
                     if (!value) {
                         return true;

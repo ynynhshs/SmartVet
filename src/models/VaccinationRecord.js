@@ -26,6 +26,7 @@ const vaccinationRecordSchema = new mongoose.Schema(
             type: Date,
             required: [true, 'Administration date is required.'],
             validate: {
+                // Reject an administration date later than today in the clinic timezone.
                 validator: function (value) {
                     if (!value) {
                         return true;
@@ -46,6 +47,7 @@ const vaccinationRecordSchema = new mongoose.Schema(
             type: Date,
             default: undefined,
             validate: {
+                // Reject a next due date earlier than the administration date.
                 validator: function (value) {
                     if (!value || !this.administeredDate) {
                         return true;

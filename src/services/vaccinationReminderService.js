@@ -8,6 +8,10 @@ const { sendPushToUser } = require('./pushService');
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const REMINDER_WINDOW_DAYS = 7;
 
+/**
+ * Truncate a date to midnight UTC of its own calendar day, returning null for
+ * invalid input. Used to compare due dates by calendar day.
+ */
 function toUtcDateOnly(value) {
     const date = new Date(value);
 
@@ -24,10 +28,20 @@ function toUtcDateOnly(value) {
     );
 }
 
+/**
+ * Format a Date as a `YYYY-MM-DD` string via its UTC ISO representation.
+ */
 function formatDateOnly(value) {
     return value.toISOString().slice(0, 10);
 }
 
+/**
+ * Scan vaccination records and create in-app notifications (plus browser push)
+ * for pets that are overdue or due within 7 days. Only approved pets with an
+ * owner are eligible, and a `dedupeKey` unique index suppresses repeat
+ * notifications. Returns counts for scanned, eligible, created, duplicates,
+ * skipped and pushed.
+ */
 async function generateVaccinationReminders() {
     const now = new Date();
     const today = toUtcDateOnly(now);

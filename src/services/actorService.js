@@ -11,6 +11,10 @@ const VeterinaryUser = require('../models/VeterinaryUser');
 //
 // These helpers resolve actor ids against both collections instead.
 
+/**
+ * Coerce a value to a Mongoose ObjectId, returning null for empty or invalid
+ * input. Used to normalise actor ids before querying either account collection.
+ */
 function toObjectId(id) {
     if (id === null || id === undefined || id === '') {
         return null;
@@ -31,6 +35,12 @@ function toObjectId(id) {
 
 // Build a map of actor id -> { id, fullName, source, role }.
 // Unknown or malformed ids are simply absent from the map.
+/**
+ * Resolve a list of actor ids against both the owner and veterinary collections
+ * and return a Map of id string to `{ id, fullName, role, source }`. Unknown or
+ * malformed ids are omitted. Needed because a Mongoose `populate` cannot span
+ * two collections.
+ */
 async function resolveActors(ids) {
     const objectIds = [
         ...new Set(
@@ -86,6 +96,11 @@ async function resolveActors(ids) {
 //
 // Documents must be plain objects (use `.lean()`); assigning to a Mongoose
 // document path would attempt an ObjectId cast.
+/**
+ * Replace `document[field]` on each plain object with the resolved actor
+ * summary (or null). Mutates and returns the array; documents must be lean
+ * objects, not Mongoose documents.
+ */
 async function attachActors(documents, field) {
     if (!Array.isArray(documents) || !documents.length) {
         return documents;

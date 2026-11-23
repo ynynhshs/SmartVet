@@ -208,6 +208,94 @@
                 </div>
             </div>
 
+            <!-- Clinic analytics: vaccination status donut + registration trend -->
+            <section class="workspace-panel clinic-analytics-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Clinic Analytics</h2>
+                        <p class="muted">
+                            Vaccination status across every registered pet, and how quickly new registrations are arriving.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="analytics-grid">
+                    <div class="analytics-block">
+                        <h3 class="analytics-title">Overall Vaccination Status</h3>
+                        <p class="muted analytics-subtitle">
+                            Grouped by each pet's most urgent recorded due date.
+                        </p>
+
+                        <div class="donut-layout">
+                            <div class="donut-wrap">
+                                <svg
+                                    class="donut-chart"
+                                    id="vaccinationStatusDonut"
+                                    viewBox="0 0 42 42"
+                                    role="img"
+                                    aria-labelledby="vaccinationStatusDonutTitle">
+                                    <title id="vaccinationStatusDonutTitle">
+                                        Overall vaccination status of registered pets
+                                    </title>
+                                    <circle
+                                        class="donut-track"
+                                        cx="21"
+                                        cy="21"
+                                        r="15.9155"></circle>
+                                </svg>
+
+                                <div class="donut-center">
+                                    <strong id="vaccinationStatusTotal">—</strong>
+                                    <span>Registered Pets</span>
+                                </div>
+                            </div>
+
+                            <ul class="donut-legend">
+                                <li>
+                                    <span class="donut-swatch donut-swatch-up-to-date"></span>
+                                    <span class="donut-label">Up to Date</span>
+                                    <strong id="vaccinationStatusUpToDate">—</strong>
+                                </li>
+                                <li>
+                                    <span class="donut-swatch donut-swatch-due-soon"></span>
+                                    <span class="donut-label">Due Within 30 Days</span>
+                                    <strong id="vaccinationStatusDueSoon">—</strong>
+                                </li>
+                                <li>
+                                    <span class="donut-swatch donut-swatch-overdue"></span>
+                                    <span class="donut-label">Overdue</span>
+                                    <strong id="vaccinationStatusOverdue">—</strong>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="analytics-block">
+                        <h3 class="analytics-title">New Pet Registrations Over Time</h3>
+                        <p class="muted analytics-subtitle">
+                            Monthly sign-ups for the last six months, including the pending review queue.
+                        </p>
+
+                        <div class="line-chart-wrap">
+                            <svg
+                                class="line-chart"
+                                id="registrationTrendChart"
+                                viewBox="0 0 320 200"
+                                role="img"
+                                aria-labelledby="registrationTrendChartTitle">
+                                <title id="registrationTrendChartTitle">
+                                    Line chart of new pet registrations per month
+                                </title>
+                            </svg>
+                        </div>
+
+                        <p class="muted line-chart-footnote" id="registrationTrendSummary">
+                            Registration trend will appear here.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             <!-- Preserve compatibility with existing dashboard JavaScript -->
             <span id="approvedCount" hidden>—</span>
 

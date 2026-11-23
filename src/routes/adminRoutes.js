@@ -29,6 +29,10 @@ router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'vete
 
 const ADMINISTRATOR_ROLE = 'veterinarian';
 
+/**
+ * Allow only the `veterinarian` administrator role through. Responds 403 for
+ * other veterinary staff; must run after `requireAuth`.
+ */
 function requireAdministrator(req, res, next) {
     if (req.user.role !== ADMINISTRATOR_ROLE) {
         return res.status(403).json({
@@ -40,6 +44,10 @@ function requireAdministrator(req, res, next) {
     return next();
 }
 
+/**
+ * Write a 400 JSON response listing field-level validation errors and return
+ * false, or return true when the request is valid.
+ */
 function validateRequest(req, res) {
     const errors = validationResult(req);
 
@@ -59,6 +67,10 @@ function validateRequest(req, res) {
     return false;
 }
 
+/**
+ * Shape a VeterinaryUser document for admin responses, exposing only safe fields
+ * and resolving `createdBy` to a display name without leaking the password hash.
+ */
 function serializeVeterinaryUser(account) {
     const createdBy = account.createdBy;
 
@@ -90,6 +102,10 @@ function serializeVeterinaryUser(account) {
 }
 
 // Record an administrator action in the audit trail.
+/**
+ * Append an administrator action to the audit trail. Failures are logged and
+ * swallowed so auditing never makes the requested action fail.
+ */
 async function writeAdminAudit(req, action, summary, entityType = 'user', entityId = undefined) {
     try {
         await AuditLog.create({
@@ -113,6 +129,10 @@ async function writeAdminAudit(req, action, summary, entityType = 'user', entity
 
 // GET /api/clinic/admin/users
 // List every veterinary staff account.
+/**
+ * List veterinary staff accounts (newest first, max 500) with their creator
+ * resolved across both account collections.
+ */
 router.get('/users', requireAdministrator, async (req, res, next) => {
     try {
         const accounts = await VeterinaryUser.find({})
@@ -134,6 +154,11 @@ router.get('/users', requireAdministrator, async (req, res, next) => {
 
 // POST /api/clinic/admin/users
 // Provision a new veterinary staff account.
+/**
+ * Provision a veterinary staff account. Rejects emails already used in either
+ * collection, hashes the password, records an audit entry, and returns the
+ * serialized account.
+ */
 router.post(
     '/users',
     requireAdministrator,
@@ -320,6 +345,11 @@ router.post(
 
 // PATCH /api/clinic/admin/users/:userId
 // Update a staff account's personal information, role, or access status.
+/**
+ * Update a staff account's editable fields. Blocks email reuse across both
+ * collections and prevents an administrator from changing their own role or
+ * status; records an audit entry.
+ */
 router.patch(
     '/users/:userId',
     requireAdministrator,
@@ -554,6 +584,10 @@ router.patch(
 // POST /api/clinic/admin/users/:userId/password
 // Reset a staff account's password. The new password is written once and is
 // never returned to the browser.
+/**
+ * Reset a staff account's password and optionally force a change at next
+ * sign-in. The new password is never returned to the browser.
+ */
 router.post(
     '/users/:userId/password',
     requireAdministrator,
@@ -630,6 +664,10 @@ router.post(
 
 // DELETE /api/clinic/admin/users/:userId
 // Remove a staff account that has never signed in.
+/**
+ * Delete a staff account that has never signed in. Refuses self-deletion and
+ * accounts with a `lastLoginAt`, which must be disabled instead.
+ */
 router.delete('/users/:userId', requireAdministrator, async (req, res, next) => {
     if (!mongoose.isValidObjectId(req.params.userId)) {
         return res.status(400).json({
@@ -686,6 +724,9 @@ router.delete('/users/:userId', requireAdministrator, async (req, res, next) => 
 // ---------------------------------------------------------------------------
 
 // GET /api/clinic/admin/settings
+/**
+ * Return the singleton clinic settings document (created on first read).
+ */
 router.get('/settings', requireAdministrator, async (req, res, next) => {
     try {
         const settings = await ClinicSettings.getSettings();
@@ -700,6 +741,10 @@ router.get('/settings', requireAdministrator, async (req, res, next) => {
 });
 
 // PUT /api/clinic/admin/settings
+/**
+ * Apply a partial update to the singleton clinic settings and record an audit
+ * entry. At least one editable field must be supplied.
+ */
 router.put(
     '/settings',
     requireAdministrator,
@@ -835,6 +880,10 @@ router.put(
 
 // GET /api/clinic/admin/devices
 // Device registry with optional status and type filters.
+/**
+ * List devices with optional status/deviceType filters plus per-status counts.
+ * Credential hashes are never included.
+ */
 router.get(
     '/devices',
     requireAdministrator,
@@ -915,6 +964,9 @@ router.get(
 
 // DELETE /api/clinic/admin/devices/:deviceId
 // Remove a device from the global registry.
+/**
+ * Remove a device from the global registry and record an audit entry.
+ */
 router.delete(
     '/devices/:deviceId',
     requireAdministrator,
@@ -961,6 +1013,11 @@ router.delete(
 // ---------------------------------------------------------------------------
 
 // GET /api/clinic/admin/audit-logs
+/**
+ * List audit entries (newest first, limit 500) with optional action, entity type
+ * and source filters. Always excludes collar activity telemetry and includes a
+ * system-wide document count overview.
+ */
 router.get(
     '/audit-logs',
     requireAdministrator,

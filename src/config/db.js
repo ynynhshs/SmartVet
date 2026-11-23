@@ -1,6 +1,10 @@
 
 const mongoose = require('mongoose');
 
+/**
+ * Connect to MongoDB Atlas using MONGODB_URI. Throws when the connection
+ * string is missing and logs the connected database name on success.
+ */
 async function connectDB() {
     const uri = process.env.MONGODB_URI;
 

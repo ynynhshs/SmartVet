@@ -66,6 +66,10 @@ const clinicSettingsSchema = new mongoose.Schema(
 );
 
 // Return the current settings, creating the singleton document on first use.
+/**
+ * Return the singleton `key: 'global'` settings document, creating it on first
+ * use and returning a plain object.
+ */
 clinicSettingsSchema.statics.getSettings = async function () {
     let settings = await this.findOne({ key: 'global' }).lean();
 
@@ -78,6 +82,10 @@ clinicSettingsSchema.statics.getSettings = async function () {
 };
 
 // Apply a partial update to the singleton document.
+/**
+ * Apply a partial `$set` update to the singleton settings document, upserting
+ * and re-running schema validators, and return the updated document.
+ */
 clinicSettingsSchema.statics.updateSettings = async function (changes) {
     const settings = await this.findOneAndUpdate(
         { key: 'global' },

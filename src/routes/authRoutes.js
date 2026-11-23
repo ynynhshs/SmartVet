@@ -50,6 +50,10 @@ const registerPhotoUpload = multer({
 
 // Turns multer failures (wrong file type, oversized photo) into a readable 400
 // instead of letting them fall through to the 500 handler.
+/**
+ * Wrap the profile-photo multer upload so file-type and size failures return a
+ * readable 400 JSON response instead of falling through to the 500 handler.
+ */
 function handleRegisterPhoto(req, res, next) {
     registerPhotoUpload.single('profilePhoto')(req, res, (error) => {
         if (!error) {
@@ -95,6 +99,11 @@ const pinResetLimiter = rateLimit({
 // POST /api/auth/veterinary/login
 // Veterinary staff sign-in. The owner collection is never consulted here, so
 // an owner account cannot open the clinic workspace.
+/**
+ * Veterinary staff sign-in. Looks up only the VeterinaryUser collection, so an
+ * owner account cannot open the clinic workspace, and always returns one generic
+ * 401 message to avoid account enumeration. Returns a Bearer token.
+ */
 router.post(
     '/veterinary/login',
     loginLimiter,
@@ -151,6 +160,11 @@ router.post(
 );
 
 // POST /api/auth/register
+/**
+ * Register a pet owner. Enforces a unique email across both the owner and
+ * veterinary collections, stores an optional Cloudinary profile photo, and
+ * returns a Bearer token plus the created account.
+ */
 router.post(
     '/register',
     registerLimiter,
@@ -254,6 +268,11 @@ router.post(
 );
 
 // POST /api/auth/login
+/**
+ * Owner sign-in with email and password. Only active owner accounts in the
+ * `User` collection succeed; returns a generic 401 otherwise and a Bearer token
+ * on success.
+ */
 router.post(
     '/login',
     loginLimiter,
@@ -308,6 +327,10 @@ router.post(
 // POST /api/auth/pin/login
 // Lets a pet owner unlock the app with the PIN they saved in Settings instead
 // of typing their email and password.
+/**
+ * Owner app-lock sign-in using email plus a 6-digit PIN. Only active owners with
+ * a stored PIN hash succeed, and failures return one generic message.
+ */
 router.post(
     '/pin/login',
     pinLoginLimiter,
@@ -375,6 +398,10 @@ router.post(
 // "Forgot PIN" flow: the owner proves ownership with their email and password,
 // then chooses a new PIN. Returns a fresh session because the credentials were
 // verified successfully.
+/**
+ * "Forgot PIN" flow: verifies the owner's email and password, then stores a new
+ * 6-digit PIN hash and returns a fresh Bearer token.
+ */
 router.post(
     '/pin/reset',
     pinResetLimiter,
@@ -442,6 +469,10 @@ router.post(
 );
 
 // GET /api/auth/me
+/**
+ * Return the authenticated user's trusted profile, whether a PIN is set, and
+ * the token expiry. Requires a valid Bearer token via `requireAuth`.
+ */
 router.get('/me', requireAuth, async (req, res, next) => {
     try {
         // pinHash is excluded from the default projection, so read it separately

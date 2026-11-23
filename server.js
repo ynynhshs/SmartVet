@@ -84,6 +84,10 @@ app.use((err, req, res, next) => {
     });
 });
 
+/**
+ * Connect to MongoDB, schedule the daily vaccination reminder scan, and start
+ * the Express listener. Exits the process when the database cannot be reached.
+ */
 async function startServer() {
     try {
         await connectDB();
@@ -91,6 +95,10 @@ async function startServer() {
         
         // Run vaccination reminder scans and log results without
         // allowing a scan failure to stop the web server.
+        /**
+         * Run one vaccination reminder scan and log its result. Failures are
+         * caught so a scan error never stops the web server.
+         */
         async function runReminderScan(trigger) {
             try {
                 const result = await generateVaccinationReminders();

@@ -7,10 +7,17 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@smartvet.local'
 
 let vapidConfigured = false;
 
+/**
+ * Return true when both VAPID keys are present in the environment.
+ */
 function isPushConfigured() {
     return Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
 }
 
+/**
+ * Lazily configure web-push with the VAPID details on first use and return
+ * whether push delivery is configured.
+ */
 function ensureVapidDetails() {
     if (!vapidConfigured && isPushConfigured()) {
         webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -20,6 +27,10 @@ function ensureVapidDetails() {
     return vapidConfigured;
 }
 
+/**
+ * Convert a stored PushSubscription document into the plain object shape the
+ * web-push library expects, defaulting `expirationTime` to null.
+ */
 function toSubscriptionObject(subscription) {
     return {
         endpoint: subscription.endpoint,
@@ -33,6 +44,12 @@ function toSubscriptionObject(subscription) {
 
 // Deliver a notification to every browser the owner is subscribed with.
 // Failures are isolated per subscription; dead subscriptions are removed.
+/**
+ * Deliver a notification to every stored subscription for a user. Results are
+ * isolated per subscription with `Promise.allSettled`, and subscriptions the
+ * push service reports as gone (404/410) are deleted. Returns `{ sent, total }`
+ * or `{ sent: 0, reason }` when unconfigured or unsubscribed.
+ */
 async function sendPushToUser(userId, notification) {
     if (!ensureVapidDetails()) {
         return { sent: 0, reason: 'push-not-configured' };

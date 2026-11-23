@@ -24,6 +24,11 @@ const allowedStatuses = [
 // GET /api/clinic/feeding-events
 // Retrieve the latest feeding events, optionally filtered by pet,
 // feeder device, or feeding status.
+/**
+ * List the latest feeding events (max 200, newest first) for veterinary staff,
+ * optionally filtered by pet, device or status; validates all query ids and the
+ * status allow-list.
+ */
 router.get('/', async (req, res, next) => {
     try {
         const filter = {};

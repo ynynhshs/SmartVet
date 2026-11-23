@@ -20,6 +20,10 @@ const router = express.Router();
 // veterinary user.
 router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
+/**
+ * Write a 400 JSON response with field-level validation errors and return false,
+ * or return true when the request is valid.
+ */
 function validateRequest(req, res) {
     const errors = validationResult(req);
 
@@ -40,6 +44,9 @@ function validateRequest(req, res) {
 }
 
 // Record important device-management actions.
+/**
+ * Append a device-management action to the audit trail for the given device.
+ */
 async function writeDeviceAudit(req, action, device, summary) {
     await AuditLog.create({
         actorUserId: req.user.id,
@@ -53,6 +60,10 @@ async function writeDeviceAudit(req, action, device, summary) {
 }
 
 // Return safe device information without exposing its credential hash.
+/**
+ * Shape a Device document for responses, resolving populated `petId`/`createdBy`
+ * and never exposing the credential hash.
+ */
 function serializeDevice(device) {
     let pet = null;
 
@@ -98,6 +109,11 @@ function serializeDevice(device) {
 
 // POST /api/clinic/devices
 // Register a feeder or collar and return its device token once.
+/**
+ * Register a feeder or collar. Generates a high-entropy device token whose
+ * SHA-256 hash is stored, and returns the raw token exactly once. An optional
+ * pet must already be approved.
+ */
 router.post(
     '/',
     [
@@ -223,6 +239,10 @@ router.post(
 
 // GET /api/clinic/devices
 // List registered devices without returning authentication credentials.
+/**
+ * List registered devices (newest first, max 200) without authentication
+ * credentials.
+ */
 router.get('/', async (req, res, next) => {
     try {
         const devices = await Device.find({})
@@ -245,6 +265,10 @@ router.get('/', async (req, res, next) => {
 
 // PATCH /api/clinic/devices/:deviceId/assignment
 // Assign a device to a verified pet, or unassign it with petId: null.
+/**
+ * Assign an active device to an approved pet, or unassign it with `petId: null`.
+ * Inactive devices cannot be reassigned; records an audit entry.
+ */
 router.patch(
     '/:deviceId/assignment',
     [
@@ -334,6 +358,10 @@ router.patch(
 
 // PATCH /api/clinic/devices/:deviceId/status
 // Disable a device or permanently revoke it.
+/**
+ * Change a device's status between active, disabled and revoked. Revocation is
+ * terminal, so a revoked device cannot be reactivated.
+ */
 router.patch(
     '/:deviceId/status',
     [
@@ -405,6 +433,10 @@ router.patch(
 
 // POST /api/clinic/devices/:deviceId/renew-token
 // Generate a replacement credential for an existing device.
+/**
+ * Generate a replacement device token for a non-revoked device, storing only its
+ * hash and returning the raw token once.
+ */
 router.post(
     '/:deviceId/renew-token',
     [

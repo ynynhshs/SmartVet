@@ -23,6 +23,11 @@ const router = express.Router();
 router.use(requireAuth, authorizeRoles('veterinarian', 'veterinary_staff', 'veterinary'));
 
 // Serve a pet photo only to authenticated veterinary staff.
+/**
+ * Serve a pet's stored photo to authenticated veterinary staff. Redirects to a
+ * Cloudinary URL when stored, otherwise streams the local file with private,
+ * no-store caching.
+ */
 router.get('/pets/:petId/photo', async (req, res, next) => {
     try {
         if (!mongoose.isValidObjectId(req.params.petId)) {
@@ -87,6 +92,11 @@ router.get('/pets/:petId/photo', async (req, res, next) => {
 
 // Serve an owner's profile photo to authenticated veterinary staff.
 // Used by the QR scanner's owner details modal.
+/**
+ * Serve an owner's profile photo to authenticated veterinary staff for the QR
+ * scanner's owner details modal. Redirects to Cloudinary or streams the local
+ * file; 404s when no photo exists.
+ */
 router.get('/owners/:ownerId/photo', async (req, res, next) => {
     try {
         if (!mongoose.isValidObjectId(req.params.ownerId)) {
@@ -149,11 +159,19 @@ router.get('/owners/:ownerId/photo', async (req, res, next) => {
 
 // Generate an official Pet ID.
 // Example: PET-A1B2C3D4
+/**
+ * Generate an official Pet ID of the form `PET-` plus 8 random hexadecimal
+ * characters (for example `PET-A1B2C3D4`).
+ */
 function generatePetCode() {
     return `PET-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
 // Veterinary area access check.
+/**
+ * Veterinary area access check. Confirms the caller passed router-level
+ * authentication and echoes the trusted user id, name and role.
+ */
 router.get('/', (req, res) => {
     res.status(200).json({
         success: true,
@@ -170,6 +188,11 @@ router.get('/', (req, res) => {
 
 // GET /api/clinic/dashboard-overview
 // Provide real database data for the clinic dashboard overview.
+/**
+ * Build the clinic dashboard overview using Philippine calendar boundaries: pet
+ * and pending-review counts, overdue/due-soon vaccine counts (latest record per
+ * pet and vaccine), up to 10 attention records, and 10 recent audit entries.
+ */
 router.get('/dashboard-overview', async (req, res, next) => {
     try {
         // Calculate calendar boundaries using Philippine time.
@@ -278,6 +301,100 @@ router.get('/dashboard-overview', async (req, res, next) => {
                 .lean()
         ]);
 
+        // Classify every pet by its most urgent recorded due date, so the three
+        // donut slices (overdue / due soon / up to date) always sum to the pet
+        // total. Pets with no usable due date count as up to date.
+        const statusTotals = await VaccinationRecord.aggregate([
+            ...latestVaccinationStages,
+            { $match: { nextDueDate: { $ne: null } } },
+            {
+                $group: {
+                    _id: '$petId',
+                    earliestDueDate: { $min: '$nextDueDate' }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    overdue: {
+                        $sum: {
+                            $cond: [{ $lt: ['$earliestDueDate', today] }, 1, 0]
+                        }
+                    },
+                    dueSoon: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $gte: ['$earliestDueDate', today] },
+                                        { $lt: ['$earliestDueDate', dueSoonEnd] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+
+        const overduePets = statusTotals[0]?.overdue || 0;
+        const dueSoonPets = statusTotals[0]?.dueSoon || 0;
+
+        // Monthly new-pet sign-ups for the last six clinic months, keeping empty
+        // months in the series so the line never appears to skip a month.
+        const MONTH_LABELS = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+        const trendBuckets = [];
+
+        for (let offset = 5; offset >= 0; offset--) {
+            let month = Number(datePart('month')) - offset;
+            let year = Number(datePart('year'));
+
+            while (month <= 0) {
+                month += 12;
+                year -= 1;
+            }
+
+            trendBuckets.push({
+                key: `${year}-${String(month).padStart(2, '0')}`,
+                label: MONTH_LABELS[month - 1]
+            });
+        }
+
+        const trendStart = new Date(`${trendBuckets[0].key}-01T00:00:00+08:00`);
+
+        // Widen by a day: Manila timestamps can fall on the previous UTC day.
+        trendStart.setDate(trendStart.getDate() - 1);
+
+        const monthlySignups = await Pet.aggregate([
+            { $match: { createdAt: { $gte: trendStart } } },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: '%Y-%m',
+                            date: '$createdAt',
+                            timezone: 'Asia/Manila'
+                        }
+                    },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const countByMonth = new Map(
+            monthlySignups.map((row) => [row._id, row.count])
+        );
+
+        const registrationTrend = trendBuckets.map((bucket) => ({
+            label: bucket.label,
+            count: countByMonth.get(bucket.key) || 0
+        }));
+
         // Audit actors are veterinary staff, resolved across collections.
         await attachActors(recentLogs, 'actorUserId');
 
@@ -345,7 +462,17 @@ router.get('/dashboard-overview', async (req, res, next) => {
                 registeredPets,
                 pendingReview,
                 overdueVaccines: overdueCount[0]?.count || 0,
-                dueSoonVaccines: dueSoonCount[0]?.count || 0
+                dueSoonVaccines: dueSoonCount[0]?.count || 0,
+                vaccinationStatus: {
+                    total: registeredPets,
+                    upToDate: Math.max(
+                        registeredPets - overduePets - dueSoonPets,
+                        0
+                    ),
+                    dueSoon: dueSoonPets,
+                    overdue: overduePets
+                },
+                registrationTrend
             },
             vaccinationAttention,
             recentActivity
@@ -357,6 +484,11 @@ router.get('/dashboard-overview', async (req, res, next) => {
 
 // GET /api/clinic/reports
 // Return bounded, date-filtered rows for veterinary staff to review or export.
+/**
+ * Return bounded (max 5000 rows) date-filtered CSV-style rows for the
+ * `registrations`, `vaccinations` or `followups` report type. Dates must be
+ * `YYYY-MM-DD` and the start date may not exceed the end date.
+ */
 router.get('/reports', async (req, res, next) => {
     const reportType = req.query.type;
     const allowedTypes = ['registrations', 'vaccinations', 'followups'];
@@ -368,6 +500,10 @@ router.get('/reports', async (req, res, next) => {
         });
     }
 
+    /**
+     * Parse a `YYYY-MM-DD` query value into a midnight-UTC Date, returning null
+     * when absent and throwing a labeled error for malformed or impossible dates.
+     */
     function parseDate(value, label) {
         if (value === undefined) return null;
         if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -396,6 +532,11 @@ router.get('/reports', async (req, res, next) => {
         });
     }
 
+    /**
+     * Build a Mongoose range filter on `field` from the parsed from/to bounds.
+     * The end date is exclusive (next midnight UTC) so the whole end day is
+     * included.
+     */
     function dateFilter(field) {
         const filter = {};
         if (from || to) {
@@ -485,6 +626,10 @@ router.get('/reports', async (req, res, next) => {
 });
 
 // 1. View pending pet registrations.
+/**
+ * List pet registrations with status `pending`, oldest first, including owner
+ * details and whether a photo exists.
+ */
 router.get('/pets/pending', async (req, res, next) => {
     try {
         const pets = await Pet.find({
@@ -524,6 +669,11 @@ router.get('/pets/pending', async (req, res, next) => {
 });
 
 // 2. Approve a pending registration and assign an official Pet ID.
+/**
+ * Approve a pending registration: generate a unique Pet ID (retrying on
+ * collision), assign a random 64-hex QR identifier, and return a QR data URL.
+ * Only pending pets can be approved.
+ */
 router.patch(
     '/pets/:petId/approve',
     [
@@ -642,6 +792,10 @@ router.patch(
 );
 
 // 3. Mark a pending registration as needing additional verification.
+/**
+ * Mark a pending registration as `needs_verification` with a required reason.
+ * Only pending pets can be updated.
+ */
 router.patch(
     '/pets/:petId/needs-verification',
     [
@@ -728,6 +882,10 @@ router.patch(
  */
 
 // 4. List approved pets for vaccination recording.
+/**
+ * List approved pets (sorted by name) with owner details for vaccination
+ * recording.
+ */
 router.get('/pets/approved', async (req, res, next) => {
     try {
         const pets = await Pet.find({
@@ -766,6 +924,10 @@ router.get('/pets/approved', async (req, res, next) => {
 });
 
 
+/**
+ * Look up an approved pet by its 64-hex QR identifier. Returns the pet and its
+ * owner's profile plus photo endpoints, but never the stored photo filename.
+ */
 router.get('/pets/qr/:identifier', async (req, res, next) => {
     const identifier = req.params.identifier;
 
@@ -855,6 +1017,11 @@ router.get('/pets/qr/:identifier', async (req, res, next) => {
 
 
 // 5. Record a vaccination for an approved pet.
+/**
+ * Record a vaccination for an approved pet. Validates the administration date
+ * against the clinic's current local date and requires nextDueDate to be on or
+ * after it; stores dates as midnight UTC.
+ */
 router.post(
     '/pets/:petId/vaccinations',
     [
@@ -1017,6 +1184,10 @@ router.post(
 );
 
 // 6. View the vaccination history of an approved pet.
+/**
+ * Return an approved pet's vaccination history, newest first, with the
+ * administering staff member resolved across both account collections.
+ */
 router.get('/pets/:petId/vaccinations', async (req, res, next) => {
     const { petId } = req.params;
 

@@ -20,6 +20,10 @@ const {
 let passed = 0;
 let failed = 0;
 
+/**
+ * Records one assertion result, appending diagnostic detail to the FAIL line
+ * when the condition is false.
+ */
 function check(label, condition, detail) {
     if (condition) {
         passed++;
@@ -31,6 +35,10 @@ function check(label, condition, detail) {
     console.error(`FAIL: ${label}${detail ? ` - ${detail}` : ''}`);
 }
 
+/**
+ * Returns the Mongoose validation error for the role field when Model is given
+ * that role, or null when the role is accepted.
+ */
 function roleError(Model, role) {
     const error = new Model({
         fullName: 'Role Check',
@@ -56,6 +64,10 @@ const validStaff = {
     role: 'veterinary_staff'
 };
 
+/**
+ * Runs the schema and live-database checks proving owners stay in `users` while
+ * veterinary staff stay in `veterinaryusers`, including actor resolution.
+ */
 async function main() {
     // --- schema-level separation -------------------------------------------
     check(
@@ -205,6 +217,7 @@ async function main() {
     process.exitCode = failed ? 1 : 0;
 }
 
+// Logs the unexpected failure, marks the run as failed, and closes the connection.
 main().catch((error) => {
     console.error(`\nSplit test failed: ${error.message}`);
     process.exitCode = 1;

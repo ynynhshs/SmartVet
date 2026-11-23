@@ -112,6 +112,7 @@ const veterinaryUserSchema = new mongoose.Schema(
         timestamps: true,
         versionKey: false,
         toJSON: {
+            // Strip the password hash from serialized staff accounts.
             transform: (doc, ret) => {
                 delete ret.passwordHash;
                 return ret;
@@ -122,6 +123,10 @@ const veterinaryUserSchema = new mongoose.Schema(
 
 // Look up a staff account by email, always including the password hash so the
 // clinic sign-in can verify it.
+/**
+ * Find a staff account by case-normalized email, always including the otherwise
+ * excluded `passwordHash` so sign-in can verify it.
+ */
 veterinaryUserSchema.statics.findByEmailWithPassword = function (email) {
     return this.findOne({
         email: String(email || '').trim().toLowerCase()
@@ -129,6 +134,10 @@ veterinaryUserSchema.statics.findByEmailWithPassword = function (email) {
 };
 
 // Create a staff account with a hashed password.
+/**
+ * Create a VeterinaryUser with a bcrypt-hashed password and default empty values
+ * for optional profile fields.
+ */
 veterinaryUserSchema.statics.createAccount = async function (data) {
     const passwordHash = await hashPassword(data.password);
 

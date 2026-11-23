@@ -6,6 +6,10 @@ const BCRYPT_ROUNDS = 12;
 const JWT_ISSUER = 'smartvet-api';
 const JWT_AUDIENCE = 'smartvet-client';
 
+/**
+ * Read JWT_SECRET and throw unless it is at least 64 characters, so weak or
+ * missing secrets fail before any token is issued or verified.
+ */
 function getJwtSecret() {
     const secret = process.env.JWT_SECRET;
 
@@ -20,6 +24,10 @@ function getJwtSecret() {
 }
 
 // Hash a password before saving it to MongoDB.
+/**
+ * Hash a password with bcrypt after enforcing the 8-character minimum and the
+ * 72-byte bcrypt input limit. Throws when either limit is violated.
+ */
 async function hashPassword(password) {
     if (typeof password !== 'string' || password.length < 8) {
         throw new Error(
@@ -38,6 +46,10 @@ async function hashPassword(password) {
 }
 
 // Compare a supplied password with its stored hash.
+/**
+ * Compare a plaintext password with a stored bcrypt hash, returning false for
+ * missing or non-string inputs instead of throwing.
+ */
 async function comparePassword(password, passwordHash) {
     if (
         typeof password !== 'string' ||
@@ -59,10 +71,16 @@ const PIN_MAX_LENGTH = 6;
 const PIN_ROUNDS = 10;
 const PIN_PATTERN = new RegExp(`^\\d{${PIN_MIN_LENGTH},${PIN_MAX_LENGTH}}$`);
 
+/**
+ * Return true when `pin` is a string of exactly 6 digits.
+ */
 function isValidPin(pin) {
     return typeof pin === 'string' && PIN_PATTERN.test(pin);
 }
 
+/**
+ * Hash a 6-digit PIN with bcrypt, throwing when the PIN fails `isValidPin`.
+ */
 async function hashPin(pin) {
     if (!isValidPin(pin)) {
         throw new Error('PIN must be exactly 6 digits.');
@@ -71,6 +89,10 @@ async function hashPin(pin) {
     return bcrypt.hash(pin, PIN_ROUNDS);
 }
 
+/**
+ * Compare a supplied PIN with its stored bcrypt hash, returning false for
+ * missing or non-string inputs.
+ */
 async function comparePin(pin, pinHash) {
     if (
         typeof pin !== 'string' ||
@@ -86,6 +108,11 @@ async function comparePin(pin, pinHash) {
 // Create a signed access token for an authenticated user.
 // Store only the user's ID in the token; the backend will
 // retrieve the current role and account status from MongoDB.
+/**
+ * Sign an HS256 JWT whose subject is the user id and whose expiry comes from
+ * JWT_EXPIRES_IN (default 1h). Carries no role claim; roles are re-read from
+ * MongoDB on each request.
+ */
 function createAccessToken(user) {
     if (!user || !user._id) {
         throw new Error('A valid user ID is required.');
@@ -108,6 +135,10 @@ function createAccessToken(user) {
 }
 
 // Verify a token's signature, expiry, issuer, and audience.
+/**
+ * Verify a token's signature, expiry, issuer and audience, returning
+ * `{ userId, expiresAt }`. Throws for missing tokens or an invalid payload.
+ */
 function verifyAccessToken(token) {
     if (typeof token !== 'string' || token.length === 0) {
         throw new Error('An authentication token is required.');

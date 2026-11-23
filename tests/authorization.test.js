@@ -8,6 +8,10 @@ const {
 let passed = 0;
 let failed = 0;
 
+/**
+ * Records the outcome of one assertion by incrementing the pass/fail counter
+ * and printing a matching PASS or FAIL line.
+ */
 function check(description, condition) {
     if (!condition) {
         failed++;
@@ -19,6 +23,10 @@ function check(description, condition) {
     console.log(`PASS: ${description}`);
 }
 
+/**
+ * Builds minimal req/res/next stubs, invokes authorizeRoles with the requested
+ * roles, and returns the recorded status, body, and whether next() fired.
+ */
 function runAuthorization(allowedRoles, userRole) {
     const req = {
         user: userRole
@@ -30,11 +38,13 @@ function runAuthorization(allowedRoles, userRole) {
         statusCode: null,
         body: null,
 
+        // Express-like status() stub that records the HTTP status code and stays chainable.
         status(code) {
             this.statusCode = code;
             return this;
         },
 
+        // Express-like json() stub that records the response body and stays chainable.
         json(body) {
             this.body = body;
             return this;
@@ -46,6 +56,7 @@ function runAuthorization(allowedRoles, userRole) {
     authorizeRoles(...allowedRoles)(
         req,
         res,
+        // Marks next() as invoked so the helper can detect that access was granted.
         () => {
             nextCalled = true;
         }
@@ -58,6 +69,10 @@ function runAuthorization(allowedRoles, userRole) {
     };
 }
 
+/**
+ * Asserts that a user holding userRole is allowed through: next() must run and
+ * no error status may be written.
+ */
 function expectAllowed(label, allowedRoles, userRole) {
     const result = runAuthorization(allowedRoles, userRole);
 
@@ -68,6 +83,10 @@ function expectAllowed(label, allowedRoles, userRole) {
     );
 }
 
+/**
+ * Asserts that a user holding userRole is rejected: next() must not run and a
+ * 403 status must be written.
+ */
 function expectDenied(label, allowedRoles, userRole) {
     const result = runAuthorization(allowedRoles, userRole);
 

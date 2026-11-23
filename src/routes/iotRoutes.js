@@ -21,6 +21,12 @@ router.use(requireDeviceAuth);
 
 // POST /api/iot/feeding-events
 // Record a completed, failed, or cancelled feeding attempt.
+/**
+ * Record a feeding attempt reported by an authenticated feeder. Requires the
+ * device to be assigned to an approved pet, validates schedule/quantity rules,
+ * notifies the owner on failure/cancellation with a dedupe key, and returns 409
+ * for a repeated event id.
+ */
 router.post(
     '/feeding-events',
     [
@@ -366,6 +372,10 @@ router.post(
 
 // POST /api/iot/activity-records
 // Record an activity reading reported by an authenticated smart collar.
+/**
+ * Record an activity reading reported by an authenticated collar for its
+ * assigned approved pet, then writes a device-source audit entry.
+ */
 router.post(
     '/activity-records',
     [
