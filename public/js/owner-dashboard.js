@@ -1559,6 +1559,25 @@ function connectOwnerActivityStream() {
 }
 
 
+// Reminders seen on the previous load, so a device notification is raised only
+// for genuinely new items and not for the whole list on every refresh.
+const seenNotificationIds = new Set();
+let notificationIdsInitialized = false;
+
+/**
+ * Show a newly received reminder as an Android notification when the owner
+ * enabled device notifications in the app.
+ */
+function showNativeNotification(notification) {
+    if (!window.SmartVetAndroid?.showNotification) return;
+    if (localStorage.getItem('smartvetNativeNotifications') !== 'true') return;
+
+    window.SmartVetAndroid.showNotification(
+        notification.title || 'SmartVet',
+        notification.message || 'You have a new reminder.'
+    );
+}
+
 /**
  * Fetches `/api/owner/notifications`, renders the cards and updates the sidebar and overview unread counts from `unreadCount`.
  */
@@ -1576,6 +1595,20 @@ async function loadNotifications() {
 
         if (sidebarUnreadCount) sidebarUnreadCount.textContent = unreadCount;
         if (overviewUnreadCount) overviewUnreadCount.textContent = unreadCount;
+
+        // Raise a device notification for reminders that appeared since the
+        // previous load; the first load only records what is already there.
+        if (notificationIdsInitialized) {
+            notifications.forEach((notification) => {
+                if (notification.id && !seenNotificationIds.has(notification.id)) {
+                    showNativeNotification(notification);
+                }
+            });
+        }
+        notifications.forEach((notification) => {
+            if (notification.id) seenNotificationIds.add(notification.id);
+        });
+        notificationIdsInitialized = true;
 
         showMessage(notificationsSummary, `${unreadCount} unread notification(s).`, 'success');
 
@@ -1640,50 +1673,124 @@ function setPushStatus(message, type = '') {
 }
 
 /**
- * Sets the enable-notifications button's label, disabled state and status text for the unsupported, blocked, already-subscribed and available cases.
+ * Set the notifications button label and status for each transport. `reason`
+ * carries a precise explanation when notifications cannot be enabled.
  */
-function updatePushButton({ supported, isSubscribed, permission }) {
+function updatePushButton({ supported, isSubscribed, permission, mode = 'webpush', reason = '' }) {
     if (!enableNotificationsButton) return;
 
     if (!supported) {
         enableNotificationsButton.disabled = true;
         enableNotificationsButton.textContent = 'Notifications Not Supported';
-        setPushStatus('Browser notifications are not configured on the server.', 'error');
+        setPushStatus(reason || 'Notifications are not available here.', 'error');
         return;
     }
 
     if (permission === 'denied') {
         enableNotificationsButton.disabled = true;
         enableNotificationsButton.textContent = 'Notifications Blocked';
-        setPushStatus('Notifications are blocked for this site. Allow them in your browser settings, then reload.', 'error');
+        setPushStatus('Notifications are blocked for this site. Allow them in your browser or app settings, then reload.', 'error');
         return;
     }
 
     if (isSubscribed) {
         enableNotificationsButton.disabled = true;
         enableNotificationsButton.textContent = 'Notifications Enabled';
-        setPushStatus('Browser notifications are on. You will receive reminders even when this tab is closed.', 'success');
+        setPushStatus(
+            mode === 'native'
+                ? 'Device notifications are on.'
+                : mode === 'basic'
+                    ? 'Notifications are on while this page is open.'
+                    : 'Browser notifications are on. You will receive reminders even when this tab is closed.',
+            'success'
+        );
         return;
     }
 
     enableNotificationsButton.disabled = false;
     enableNotificationsButton.textContent = 'Enable Browser Notifications';
+    setPushStatus(
+        mode === 'native'
+            ? 'Enable notifications on this device.'
+            : 'Enable browser notifications to receive reminders.'
+    );
 }
 
 /**
- * Reads `/api/owner/push-subscription` and refreshes the push button state.
- * Bails out early when the button or the Notification API is missing.
+ * Choose the best notification transport: the native APK bridge, Web Push on a
+ * secure browser, plain Notifications on a page without service workers, or none.
+ */
+function detectNotificationMode() {
+    if (window.SmartVetAndroid?.isAvailable) return 'native';
+
+    const hasNotification = 'Notification' in window;
+    const hasWorker = 'serviceWorker' in navigator;
+    const hasPush = 'PushManager' in window;
+
+    if (window.isSecureContext !== false && hasNotification && hasWorker && hasPush) {
+        return 'webpush';
+    }
+
+    return hasNotification ? 'basic' : 'unsupported';
+}
+
+/**
+ * Refresh the notifications button using the best transport this device has.
  */
 async function refreshPushStatus() {
-    if (!enableNotificationsButton || !('Notification' in window)) return;
+    if (!enableNotificationsButton) return;
+
+    const mode = detectNotificationMode();
+    const insecure = window.isSecureContext === false;
+
+    if (mode === 'unsupported') {
+        updatePushButton({
+            supported: false,
+            isSubscribed: false,
+            permission: 'default',
+            mode,
+            reason: insecure
+                ? 'Notifications require HTTPS. Open SmartVet over HTTPS or on localhost.'
+                : 'This browser cannot show notifications. Use the SmartVet app or a current browser.'
+        });
+        return;
+    }
+
+    if (mode === 'native') {
+        const enabled = localStorage.getItem('smartvetNativeNotifications') === 'true';
+        updatePushButton({ supported: true, isSubscribed: enabled, permission: 'granted', mode });
+        return;
+    }
+
+    if (mode === 'basic') {
+        updatePushButton({
+            supported: true,
+            isSubscribed: Notification.permission === 'granted',
+            permission: Notification.permission,
+            mode
+        });
+        return;
+    }
 
     try {
         const config = await apiRequest('/api/owner/push-subscription');
 
+        if (!config.supported) {
+            updatePushButton({
+                supported: false,
+                isSubscribed: false,
+                permission: Notification.permission,
+                mode,
+                reason: 'Browser notifications are not configured on the server.'
+            });
+            return;
+        }
+
         updatePushButton({
-            supported: Boolean(config.supported),
+            supported: true,
             isSubscribed: Boolean(config.isSubscribed),
-            permission: Notification.permission
+            permission: Notification.permission,
+            mode
         });
     } catch (error) {
         setPushStatus(error.message || 'Unable to check notification status.', 'error');
@@ -1693,12 +1800,14 @@ async function refreshPushStatus() {
 }
 
 /**
- * Requests notification permission, registers `/sw.js`, subscribes with the server's VAPID key and POSTs the resulting subscription.
- * Failures are surfaced through the push status text and the button is reset.
+ * Enable the best available notification transport and show a test notice so
+ * the owner can confirm it works.
  */
 async function enablePushNotifications() {
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-        setPushStatus('This browser does not support push notifications.', 'error');
+    const mode = detectNotificationMode();
+
+    if (mode === 'unsupported') {
+        refreshPushStatus();
         return;
     }
 
@@ -1707,11 +1816,26 @@ async function enablePushNotifications() {
     }
 
     try {
+        if (mode === 'native') {
+            // The Android bridge requests POST_NOTIFICATIONS and calls back
+            // onSmartVetNotificationsEnabled with the result.
+            window.SmartVetAndroid.enableNotifications();
+            return;
+        }
+
         const permission = await Notification.requestPermission();
 
         if (permission !== 'granted') {
-            updatePushButton({ supported: true, isSubscribed: false, permission });
+            updatePushButton({ supported: true, isSubscribed: false, permission, mode });
             setPushStatus('Notification permission was not granted.', 'error');
+            return;
+        }
+
+        if (mode === 'basic') {
+            new Notification('SmartVet', {
+                body: 'Notifications are enabled while this page is open.'
+            });
+            await refreshPushStatus();
             return;
         }
 
@@ -1745,6 +1869,21 @@ async function enablePushNotifications() {
         }
     }
 }
+
+// Called by the Android bridge once the device permission dialog is answered.
+window.onSmartVetNotificationsEnabled = (granted) => {
+    if (granted === false) {
+        setPushStatus('Notification permission was not granted.', 'error');
+        if (enableNotificationsButton) {
+            enableNotificationsButton.disabled = false;
+            enableNotificationsButton.textContent = 'Enable Browser Notifications';
+        }
+        return;
+    }
+
+    localStorage.setItem('smartvetNativeNotifications', 'true');
+    refreshPushStatus();
+};
 
 if (enableNotificationsButton) {
     enableNotificationsButton.addEventListener('click', enablePushNotifications);

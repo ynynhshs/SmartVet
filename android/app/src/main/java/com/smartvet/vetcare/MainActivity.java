@@ -4,13 +4,19 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
@@ -31,8 +37,10 @@ public class MainActivity extends Activity {
     private static final int CAMERA_PERMISSION_REQUEST = 1001;
     private static final int FILE_CHOOSER_REQUEST = 1002;
     private static final int SAVE_DATA_DOWNLOAD_REQUEST = 1003;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 1004;
     private static final String APK_RELEASE_PATH =
         "/ynynhshs/SmartVet/releases/latest/download/SmartVet.apk";
+    private static final String NOTIFICATION_CHANNEL_ID = "smartvet_reminders";
 
     private WebView webView;
     private PermissionRequest pendingCameraRequest;
@@ -50,6 +58,9 @@ public class MainActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ));
+
+        // Android WebView has no Web Push API, so expose native notifications.
+        webView.addJavascriptInterface(new SmartVetBridge(), "SmartVetAndroid");
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -135,6 +146,98 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         webView.loadUrl(ownerLoginUrl());
+    }
+
+    /**
+     * Bridge exposed to the owner page. WebView cannot subscribe to Web Push,
+     * so reminders are posted through the Android notification system instead.
+     */
+    private class SmartVetBridge {
+        @JavascriptInterface
+        public boolean isAvailable() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public void enableNotifications() {
+            runOnUiThread(() -> requestNotificationPermission());
+        }
+
+        @JavascriptInterface
+        public void showNotification(String title, String message) {
+            runOnUiThread(() -> postNotification(title, message));
+        }
+    }
+
+    /** Ask for POST_NOTIFICATIONS on Android 13+ and post a confirmation. */
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                new String[] { Manifest.permission.POST_NOTIFICATIONS },
+                NOTIFICATION_PERMISSION_REQUEST
+            );
+            return;
+        }
+
+        postNotification("SmartVet", "Notifications are enabled on this device.");
+        notifyJavascriptPermissionResult(true);
+    }
+
+    /** Report the device permission result back to the owner page. */
+    private void notifyJavascriptPermissionResult(boolean granted) {
+        if (webView == null) {
+            return;
+        }
+
+        webView.evaluateJavascript(
+            "if (typeof window.onSmartVetNotificationsEnabled === 'function') {"
+                + "window.onSmartVetNotificationsEnabled(" + granted + "); }",
+            null
+        );
+    }
+
+    /** Post a native notification on the SmartVet channel. */
+    private void postNotification(String title, String message) {
+        NotificationManager manager =
+            (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (manager == null) {
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationChannel channel = new NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "SmartVet reminders",
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            channel.setDescription("Vaccination and pet care reminders");
+            manager.createNotificationChannel(channel);
+        }
+
+        Intent openApp = new Intent(this, MainActivity.class);
+        openApp.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent openPending = PendingIntent.getActivity(
+            this,
+            0,
+            openApp,
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        Notification.Builder builder = Build.VERSION.SDK_INT >= 26
+            ? new Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
+            : new Notification.Builder(this);
+
+        Notification notification = builder
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title == null || title.isEmpty() ? "SmartVet" : title)
+            .setContentText(message == null ? "" : message)
+            .setContentIntent(openPending)
+            .setAutoCancel(true)
+            .build();
+
+        manager.notify((int) System.currentTimeMillis(), notification);
     }
 
     private String ownerLoginUrl() {
@@ -335,6 +438,19 @@ public class MainActivity extends Activity {
         int[] grantResults
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            boolean granted = grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+
+            if (granted) {
+                postNotification("SmartVet", "Notifications are enabled on this device.");
+            }
+
+            notifyJavascriptPermissionResult(granted);
+            return;
+        }
+
         if (requestCode != CAMERA_PERMISSION_REQUEST) {
             return;
         }
