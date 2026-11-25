@@ -8,7 +8,8 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@drawable/ic_smartvet"
+        android:icon="@drawable/vetcare_logo"
+        android:roundIcon="@drawable/vetcare_logo"
         android:label="SmartVet Owner"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"

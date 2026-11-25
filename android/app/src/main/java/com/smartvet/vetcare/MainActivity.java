@@ -11,6 +11,7 @@ import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -231,6 +232,9 @@ public class MainActivity extends Activity {
 
         Notification notification = builder
             .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setLargeIcon(
+                BitmapFactory.decodeResource(getResources(), R.drawable.vetcare_logo)
+            )
             .setContentTitle(title == null || title.isEmpty() ? "SmartVet" : title)
             .setContentText(message == null ? "" : message)
             .setContentIntent(openPending)
