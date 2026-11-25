@@ -1,13 +1,14 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <Wire.h>
 #include <math.h>
 
 // --- 1. ENTER YOUR DETAILS HERE ---
-const char* ssid = "AMADAR";
-const char* password = "Agrivet01"; // Your WiFi Password
+const char* ssid = "rotsenairac";
+const char* password = "PrettyFamily083155!"; // Your WiFi Password
 const char* deviceToken = "2b87a6e6a1e1c62fb57b1523d76113946160c3a64d67fa215eecb745fa040015"; // Rotate in the dashboard if this sketch is shared
-const char* serverUrl = "http://192.168.1.12:3000/api/iot/activity-records";
+const char* serverUrl = "https://smartvet-3yqh.onrender.com/api/iot/activity-records";
 
 // --- 2. SENSOR SETTINGS ---
 const int MPU_ADDR = 0x68;
@@ -29,7 +30,8 @@ const unsigned long RETRY_INTERVAL        = 10000; // retry a failed send after 
 const unsigned long SENSOR_READ_DELAY     = 100;   // read sensor 10 times a second
 const unsigned long WIFI_RECOVER_INTERVAL = 15000; // retry a dropped WiFi link
 const unsigned long STATUS_INTERVAL       = 30000; // serial diagnostics cadence
-const unsigned long HTTP_TIMEOUT_MS       = 5000;  // give up on a hung request
+// The hosted server can sleep on the free tier; a cold start may take ~50 s.
+const unsigned long HTTP_TIMEOUT_MS       = 65000; // give up on a hung request
 
 String lastSentActivity = "";
 unsigned long lastSentTime = 0;        // time of the last accepted POST
@@ -248,8 +250,13 @@ void loop() {
       Serial.println("WiFi Disconnected. Cannot send data.");
       recoverWifi(now);
     } else {
+      WiFiClientSecure client;
+      // Embedded prototypes skip certificate-chain verification so the ESP32
+      // does not need a CA bundle. The endpoint is the project's own HTTPS URL.
+      client.setInsecure();
+
       HTTPClient http;
-      http.begin(serverUrl);
+      http.begin(client, serverUrl);
       http.setTimeout(HTTP_TIMEOUT_MS);
 
       // The backend expects this exact header, with the raw token (no Bearer).
