@@ -1093,6 +1093,53 @@ let ownerActivitySkip = 0;
 let ownerActivityTotal = 0;
 
 /**
+ * Build one Activity Monitoring card from an API record. Shared by the paged
+ * history and the live collar stream so both render identically.
+ */
+function renderActivityCard(record) {
+    const card = document.createElement('article');
+    card.className = 'owner-activity-card';
+    card.dataset.recordId = record.id || '';
+
+    const heading = document.createElement('h3');
+    const petName = record.pet?.name || 'Your pet';
+    const activity = String(record.activity || 'unknown');
+    const activityLabel = activity.charAt(0).toUpperCase() + activity.slice(1);
+    heading.textContent = `${petName} — ${activityLabel}`;
+
+    const collarLine = document.createElement('p');
+    collarLine.className = 'muted';
+    collarLine.textContent =
+        `Collar: ${record.device?.deviceCode || 'Unknown device'}`;
+
+    const durationLine = document.createElement('p');
+    durationLine.textContent =
+        record.durationSeconds === null || record.durationSeconds === undefined
+            ? 'Duration: Not provided'
+            : `Duration: ${record.durationSeconds} seconds`;
+
+    const measuredLine = document.createElement('p');
+    measuredLine.className = 'muted';
+    const measuredDate = record.measuredAt ? new Date(record.measuredAt) : null;
+    measuredLine.textContent =
+        measuredDate && !Number.isNaN(measuredDate.getTime())
+            ? `Measured: ${measuredDate.toLocaleString()}`
+            : 'Measured: Unknown time';
+
+    const sensorLine = document.createElement('p');
+    sensorLine.className = 'muted';
+    const sensor = record.sensorSummary || {};
+    sensorLine.textContent =
+        sensor.averageAccelerationMagnitude === undefined ||
+        sensor.averageAccelerationMagnitude === null
+            ? 'Sensor: Not provided'
+            : `Sensor: ${sensor.averageAccelerationMagnitude} g from ${sensor.sampleCount ?? '?'} samples`;
+
+    card.append(heading, collarLine, durationLine, sensorLine, measuredLine);
+    return card;
+}
+
+/**
  * Fetches one page (50 records) of `/api/owner/activity-records` using the pet, type and from filters.
  * `options.append` advances the skip offset and appends instead of replacing; the Load more button reflects the shown/total counts.
  */
@@ -1179,60 +1226,7 @@ async function loadOwnerActivityRecords(options = {}) {
         }
 
         records.forEach((record) => {
-            const card = document.createElement('article');
-            card.className = 'owner-activity-card';
-
-            const heading = document.createElement('h3');
-            const petName = record.pet?.name || 'Your pet';
-            const activity = String(record.activity || 'unknown');
-            const activityLabel =
-                activity.charAt(0).toUpperCase() + activity.slice(1);
-
-            heading.textContent = `${petName} — ${activityLabel}`;
-
-            const collarLine = document.createElement('p');
-            collarLine.className = 'muted';
-            collarLine.textContent =
-                `Collar: ${record.device?.deviceCode || 'Unknown device'}`;
-
-            const durationLine = document.createElement('p');
-            durationLine.textContent =
-                record.durationSeconds === null ||
-                record.durationSeconds === undefined
-                    ? 'Duration: Not provided'
-                    : `Duration: ${record.durationSeconds} seconds`;
-
-            const measuredLine = document.createElement('p');
-            measuredLine.className = 'muted';
-
-            const measuredDate = record.measuredAt
-                ? new Date(record.measuredAt)
-                : null;
-
-            measuredLine.textContent =
-                measuredDate && !Number.isNaN(measuredDate.getTime())
-                    ? `Measured: ${measuredDate.toLocaleString()}`
-                    : 'Measured: Unknown time';
-
-            const sensorLine = document.createElement('p');
-            sensorLine.className = 'muted';
-
-            const sensor = record.sensorSummary || {};
-            sensorLine.textContent =
-                sensor.averageAccelerationMagnitude === undefined ||
-                sensor.averageAccelerationMagnitude === null
-                    ? 'Sensor: Not provided'
-                    : `Sensor: ${sensor.averageAccelerationMagnitude} g from ${sensor.sampleCount ?? '?'} samples`;
-
-            card.append(
-                heading,
-                collarLine,
-                durationLine,
-                sensorLine,
-                measuredLine
-            );
-
-            ownerActivityRecordsList.appendChild(card);
+            ownerActivityRecordsList.appendChild(renderActivityCard(record));
         });
 
         const shown = ownerActivitySkip + records.length;
@@ -1288,6 +1282,202 @@ async function loadOwnerActivityRecords(options = {}) {
             ownerActivityLoadMoreButton.disabled = false;
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Live collar activity. The server pushes new readings down a server-sent event
+// stream; the page inserts them as they arrive so the owner never has to press
+// Refresh or reload the app to see a movement the collar just reported.
+// ---------------------------------------------------------------------------
+const OWNER_ACTIVITY_POLL_MS = 20000;
+let ownerActivityStream = null;
+let ownerActivityStreamOpened = false;
+let ownerActivityStreamRetry = null;
+let ownerActivityPollTimer = null;
+
+/**
+ * Check whether a pushed reading belongs to the filters currently selected in
+ * the Activity Monitoring view.
+ */
+function activityRecordMatchesFilters(record) {
+    const petId = ownerActivityPetFilter?.value || '';
+    const activity = ownerActivityTypeFilter?.value || '';
+    const from = ownerActivityFromFilter?.value || '';
+
+    if (petId && record.pet?.id !== petId) return false;
+    if (activity && record.activity !== activity) return false;
+
+    if (from && record.measuredAt) {
+        const measured = new Date(record.measuredAt);
+        const fromDate = new Date(`${from}T00:00:00`);
+        if (!Number.isNaN(measured.getTime()) &&
+            !Number.isNaN(fromDate.getTime()) &&
+            measured < fromDate) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Show a short inline notice when a fresh reading is outside the active
+ * filters, so the owner knows it arrived but is hidden by their selection.
+ */
+function showNewActivityNotice(record) {
+    if (!ownerActivityRecordsList) return;
+
+    const notice = document.createElement('p');
+    notice.className = 'owner-activity-new-notice';
+    notice.setAttribute('role', 'status');
+    notice.textContent =
+        `New activity reported for ${record.pet?.name || 'your pet'} ` +
+        `(${String(record.activity || 'unknown')}) — adjust the filters to see it.`;
+
+    ownerActivityRecordsList.parentElement.insertBefore(
+        notice,
+        ownerActivityRecordsList
+    );
+
+    setTimeout(() => notice.remove(), 12000);
+}
+
+/**
+ * Insert a freshly reported reading at the top of the list, highlight it and
+ * keep the shown/total summary in sync. Duplicate pushes are ignored.
+ */
+function applyLiveActivityRecord(record) {
+    if (!ownerActivityRecordsList || !record?.id) return;
+
+    const alreadyShown = Array.from(
+        ownerActivityRecordsList.querySelectorAll('.owner-activity-card')
+    ).some((card) => card.dataset.recordId === record.id);
+    if (alreadyShown) return;
+
+    const card = renderActivityCard(record);
+    card.classList.add('owner-activity-card--live');
+
+    // Replace the "no records yet" placeholder when the first reading lands.
+    if (ownerActivityRecordsList.children.length === 1 &&
+        ownerActivityRecordsList.querySelector('.empty-state, .muted')) {
+        ownerActivityRecordsList.replaceChildren();
+    }
+
+    ownerActivityRecordsList.prepend(card);
+
+    if (activityRecordMatchesFilters(record)) {
+        ownerActivityTotal += 1;
+        const shown = ownerActivitySkip +
+            ownerActivityRecordsList.querySelectorAll('.owner-activity-card').length;
+
+        if (ownerActivitySummary) {
+            showMessage(
+                ownerActivitySummary,
+                `Showing ${shown} of ${ownerActivityTotal} activity record(s).`
+            );
+        }
+    } else {
+        showNewActivityNotice(record);
+    }
+}
+
+/**
+ * Open (or re-open) the owner activity stream. A fetch stream is used instead
+ * of EventSource because the API authenticates with a Bearer header that
+ * EventSource cannot set. Fetch reconnects itself after a drop; the server
+ * heartbeat keeps idle connections alive.
+ */
+function connectOwnerActivityStream() {
+    if (typeof ReadableStream === 'undefined' || !window.fetch) {
+        // Very old WebViews cannot stream a response: keep the view fresh with
+        // a quiet background refetch instead of a manual Refresh button.
+        if (!ownerActivityPollTimer) {
+            ownerActivityPollTimer = setInterval(() => {
+                const section = document.getElementById('activitySection');
+                if (section && !section.hidden) {
+                    loadOwnerActivityRecords();
+                }
+            }, OWNER_ACTIVITY_POLL_MS);
+        }
+        return;
+    }
+
+    const token = window.SmartVetSession?.getToken();
+    if (!token || ownerActivityStream || ownerActivityStreamRetry) return;
+
+    const controller = new AbortController();
+    ownerActivityStream = controller;
+
+    (async () => {
+        try {
+            const response = await fetch('/api/owner/activity-stream', {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: controller.signal,
+                cache: 'no-store'
+            });
+
+            if (!response.ok || !response.body) {
+                throw new Error('Live activity stream unavailable.');
+            }
+
+            if (ownerActivityStreamOpened) {
+                // Reconnected after a drop: pull the latest page so anything
+                // reported while the stream was down is not missed.
+                loadOwnerActivityRecords();
+            }
+            ownerActivityStreamOpened = true;
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                let separator;
+                while ((separator = buffer.indexOf('\n\n')) !== -1) {
+                    const frame = buffer.slice(0, separator);
+                    buffer = buffer.slice(separator + 2);
+
+                    const data = frame
+                        .split('\n')
+                        .filter((line) => line.startsWith('data:'))
+                        .map((line) => line.slice(5).trim())
+                        .join('\n');
+
+                    if (!data) continue;
+
+                    try {
+                        const payload = JSON.parse(data);
+                        if (payload.type === 'activity.record') {
+                            applyLiveActivityRecord(payload.record);
+                        }
+                    } catch (error) {
+                        console.error('Unable to read a live activity update:', error);
+                    }
+                }
+            }
+        } catch (error) {
+            // AbortError means the stream was closed on purpose.
+            if (error.name !== 'AbortError') {
+                console.error('Activity stream disconnected:', error.message);
+            }
+        } finally {
+            if (ownerActivityStream === controller) {
+                ownerActivityStream = null;
+            }
+        }
+
+        if (!controller.signal.aborted) {
+            ownerActivityStreamRetry = setTimeout(() => {
+                ownerActivityStreamRetry = null;
+                connectOwnerActivityStream();
+            }, 3000);
+        }
+    })();
 }
 
     /**
@@ -1776,9 +1966,24 @@ if (ownerActivityNavButton) {
             await loadOwnerActivityPetOptions();
         }
 
+        // Attach the stream before the first fetch so a reading arriving in
+        // between the two cannot be missed.
+        connectOwnerActivityStream();
         await loadOwnerActivityRecords();
     });
 }
+
+// Returning to a cached page (e.g. the app was backgrounded) re-attaches the
+// stream and catches up on anything reported while the app was away.
+window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+
+    const activitySection = document.getElementById('activitySection');
+    if (activitySection && !activitySection.hidden) {
+        connectOwnerActivityStream();
+        loadOwnerActivityRecords();
+    }
+});
 
 // Refresh the activity history.
 if (refreshOwnerActivityButton) {

@@ -828,6 +828,33 @@ button:disabled {
     margin: 0;
 }
 
+/* A reading that just arrived over the live collar stream. */
+.owner-activity-card--live {
+    border-left: 4px solid var(--clay-green);
+    background: linear-gradient(
+        135deg,
+        rgba(14, 138, 102, 0.14),
+        var(--clay-surface) 70%
+    );
+    animation: owner-activity-arrive 1.8s ease-out;
+}
+
+@keyframes owner-activity-arrive {
+    0% { box-shadow: 0 0 0 4px rgba(14, 138, 102, 0.26); }
+    100% { box-shadow: var(--clay-shadow-sm); }
+}
+
+/* Notice shown when a new reading does not match the active filters. */
+.owner-activity-new-notice {
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border-left: 4px solid var(--clay-green);
+    border-radius: 10px;
+    background: rgba(14, 138, 102, 0.12);
+    color: var(--clay-text);
+    font-size: 0.92rem;
+}
+
 .owner-activity-load-more {
     margin: 0 auto;
 }

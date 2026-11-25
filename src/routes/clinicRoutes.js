@@ -636,7 +636,12 @@ router.get('/pets/pending', async (req, res, next) => {
             registrationStatus: 'pending'
         })
             .select('ownerUserId name species breed sex dateOfBirth color photoFilename photoContentType registrationStatus createdAt')
-            .populate('ownerUserId', 'fullName email')
+            .populate(
+                'ownerUserId',
+                'fullName email phone dateOfBirth gender civilStatus nationality ' +
+                'govId occupation address permanentAddress profilePhotoFilename ' +
+                'profilePhotoContentType'
+            )
             .sort({ createdAt: 1 })
             .lean();
 
@@ -649,7 +654,30 @@ router.get('/pets/pending', async (req, res, next) => {
                     ? {
                         id: pet.ownerUserId._id.toString(),
                         fullName: pet.ownerUserId.fullName,
-                        email: pet.ownerUserId.email
+                        email: pet.ownerUserId.email || '',
+                        phone: pet.ownerUserId.phone || '',
+                        dateOfBirth: pet.ownerUserId.dateOfBirth
+                            ? new Date(pet.ownerUserId.dateOfBirth)
+                                .toISOString()
+                                .slice(0, 10)
+                            : '',
+                        gender: pet.ownerUserId.gender || '',
+                        civilStatus: pet.ownerUserId.civilStatus || '',
+                        nationality: pet.ownerUserId.nationality || '',
+                        govId: pet.ownerUserId.govId || '',
+                        occupation: pet.ownerUserId.occupation || '',
+                        address: pet.ownerUserId.address || '',
+                        permanentAddress: pet.ownerUserId.permanentAddress || '',
+                        hasProfilePhoto: Boolean(
+                            pet.ownerUserId.profilePhotoFilename &&
+                            pet.ownerUserId.profilePhotoContentType
+                        ),
+                        // Stays behind veterinary authentication, like the QR scan.
+                        photoEndpoint:
+                            pet.ownerUserId.profilePhotoFilename &&
+                            pet.ownerUserId.profilePhotoContentType
+                                ? `/api/clinic/owners/${pet.ownerUserId._id.toString()}/photo`
+                                : null
                     }
                     : null,
                 name: pet.name,

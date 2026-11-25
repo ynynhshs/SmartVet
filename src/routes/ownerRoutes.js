@@ -16,6 +16,7 @@ const PushSubscription = require('../models/PushSubscription');
 const FeedingEvent = require('../models/FeedingEvent');
 const ActivityRecord = require('../models/ActivityRecord');
 const { attachActors } = require('../services/actorService');
+const activityStream = require('../services/activity-stream');
 
 const {
     requireAuth,
@@ -817,6 +818,32 @@ router.get('/feeding-events', async (req, res, next) => {
                 createdAt: event.createdAt
             }))
         });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+// GET /api/owner/activity-stream
+/**
+ * Open a server-sent event stream for this owner's pets. A collar reading posted
+ * to /api/iot/activity-records is pushed down this stream immediately, letting
+ * the Activity Monitoring page refresh itself without a manual reload.
+ */
+router.get('/activity-stream', async (req, res, next) => {
+    try {
+        const ownedPets = await Pet.find({ ownerUserId: req.user.id })
+            .select('_id')
+            .lean();
+        const petIds = ownedPets.map((pet) => pet._id.toString());
+
+        // Keep the response open: no body is sent, just SSE frames.
+        res.status(200);
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-store');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders();
+
+        activityStream.subscribe(res, petIds);
     } catch (error) {
         return next(error);
     }

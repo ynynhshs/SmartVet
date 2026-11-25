@@ -8,6 +8,7 @@ const FeedingSchedule = require('../models/FeedingSchedule');
 const FeedingEvent = require('../models/FeedingEvent');
 const ActivityRecord = require('../models/ActivityRecord');
 const AuditLog = require('../models/AuditLog');
+const activityStream = require('../services/activity-stream');
 
 const Notification = require('../models/Notification');
 
@@ -495,6 +496,29 @@ router.post(
                 entityId: record._id,
                 summary:
                     `Collar ${device.deviceCode} reported ${record.activity} activity for pet ${pet.name}.`
+            });
+
+            // Push the new reading to every open owner stream for this pet so
+            // Activity Monitoring updates without a page refresh. The payload
+            // matches the shape of /api/owner/activity-records records.
+            activityStream.broadcast(pet._id.toString(), {
+                id: record._id.toString(),
+                pet: {
+                    id: pet._id.toString(),
+                    name: pet.name,
+                    species: pet.species || null,
+                    petCode: pet.petCode || null
+                },
+                device: {
+                    id: device._id.toString(),
+                    deviceCode: device.deviceCode,
+                    deviceType: device.deviceType
+                },
+                activity: record.activity,
+                measuredAt: record.measuredAt,
+                durationSeconds: record.durationSeconds ?? null,
+                sensorSummary: record.sensorSummary ?? null,
+                createdAt: record.createdAt
             });
 
             return res.status(201).json({

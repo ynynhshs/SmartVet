@@ -54,7 +54,7 @@ app.use('/api/auth', authRoutes);
 // require a veterinary account; see src/routes/adminRoutes.js.
 app.use('/api/clinic/admin', adminRoutes);
 app.use('/api/clinic/devices', deviceRoutes);
-app.use('/api/clinic/feeding-schedules', feedingScheduleRoutes);
+app.use('/api/clinic/feeding-schedules', feedingScheduleRoutes); 
 app.use('/api/clinic/feeding-events', feedingEventRoutes);
 app.use('/api/iot', iotRoutes);
 app.use('/api/clinic', clinicRoutes);

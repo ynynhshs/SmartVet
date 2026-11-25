@@ -726,6 +726,14 @@ function createPetCard(pet) {
         )
     );
 
+    actions.appendChild(
+        createButton(
+            'View Owner Details',
+            'secondary',
+            () => openQrOwnerDetails(pet)
+        )
+    );
+
     card.appendChild(actions);
     return card;
 }
@@ -2436,14 +2444,18 @@ function displayScannedPet(pet) {
     }
 }
 
-// Display the personal information of the scanned pet's owner.
-/** Fills the owner-details dialog from the scanned pet's owner record, including the profile photo, and opens it. */
-function openQrOwnerDetails() {
-    if (!currentQrPet || !qrOwnerDetailsDialog) {
+// Display the personal information of a pet's owner in the shared dialog.
+/**
+ * Fills the owner-details dialog from a pet record's `owner` object (including
+ * the profile photo) and opens it. Defaults to the scanned QR pet, and is also
+ * called with a pending-registration card's pet.
+ */
+function openQrOwnerDetails(pet = currentQrPet) {
+    if (!pet || !pet.owner || !qrOwnerDetailsDialog) {
         return;
     }
 
-    const owner = currentQrPet.owner;
+    const owner = pet.owner;
 
     if (!owner) {
         if (qrScannerStatus) {
