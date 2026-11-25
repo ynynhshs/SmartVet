@@ -15,11 +15,14 @@ int16_t accelX, accelY, accelZ;
 float smoothTotalG = 1.0;
 int stillCounter = 0;
 String currentActivity = "unknown";
+// Strongest movement seen since the last accepted report. A shake that ends
+// before the debounce timer fires must not be discarded.
+String peakActivity = "inactive";
 
 // --- 3. REPORTING SETTINGS ---
-// A reading is sent when the classified activity changes. A heartbeat sends
-// one reading periodically even when nothing changed, so the collar still
-// shows as online in the dashboard.
+// A reading is sent when movement is detected (the strongest state in the
+// sample window is reported) or on a heartbeat, so a brief shake is not lost.
+// The heartbeat keeps the collar visible as online in the dashboard.
 const unsigned long HEARTBEAT_INTERVAL    = 60000; // send at least once per minute
 const unsigned long MIN_SEND_GAP          = 2000;  // debounce rapid activity flips
 const unsigned long RETRY_INTERVAL        = 10000; // retry a failed send after 10 s
@@ -92,6 +95,16 @@ void recoverWifi(unsigned long now) {
   WiFi.reconnect();
 }
 
+// Rank activities by movement intensity so a brief shake can be remembered
+// while the sensor settles. Running outranks walking, which outranks rest.
+int activityRank(const String& value) {
+  if (value == "running") return 4;
+  if (value == "walking") return 3;
+  if (value == "unknown") return 2;
+  if (value == "inactive") return 1;
+  return 0; // sleeping
+}
+
 // Build the JSON body. Kept as an explicit string so the field names and the
 // numbers stay in one place; the backend validates every field.
 String buildPayload() {
@@ -106,7 +119,8 @@ String buildPayload() {
   unsigned long elapsedSeconds =
       windowSamples ? (millis() - windowStartMs) / 1000 : 0;
 
-  String payload = "{\"activity\":\"" + currentActivity;
+  // Report the peak movement of the window, not the instant the POST happened.
+  String payload = "{\"activity\":\"" + peakActivity;
   payload += "\", \"durationSeconds\":" + String(elapsedSeconds);
   payload += ", \"sensorSummary\":{";
   payload += "\"averageAccelerationMagnitude\":" + String(average, 2);
@@ -122,6 +136,7 @@ void resetSampleWindow() {
   windowSamples = 0;
   windowSumG = 0.0;
   windowSumG2 = 0.0;
+  peakActivity = currentActivity;
 }
 
 void printStatus(int lastCode) {
@@ -165,11 +180,15 @@ void loop() {
   smoothTotalG = (smoothTotalG * 0.8) + (totalG * 0.2);
 
   // --- Classify Activity ---
-  if (smoothTotalG > 1.8) {
+  // Deviation from 1 g catches short, gentle shakes that the smoothed value
+  // alone would miss while the sensor is settling back to rest.
+  float deviation = fabs(totalG - 1.0);
+
+  if (deviation > 0.8 || smoothTotalG > 1.8) {
     currentActivity = "running";
     stillCounter = 0;
   }
-  else if (smoothTotalG > 1.2) {
+  else if (deviation > 0.18 || smoothTotalG > 1.2) {
     currentActivity = "walking";
     stillCounter = 0;
   }
@@ -185,6 +204,16 @@ void loop() {
     currentActivity = "unknown";
   }
 
+  // Remember the strongest state in this window so a movement that ends
+  // before the debounce gap still gets reported instead of being discarded.
+  if (activityRank(currentActivity) > activityRank(peakActivity)) {
+    peakActivity = currentActivity;
+    if (peakActivity == "walking" || peakActivity == "running") {
+      Serial.print("[motion] peak=");
+      Serial.println(peakActivity);
+    }
+  }
+
   // --- Accumulate the sample window for this report ---
   if (windowSamples == 0) {
     windowStartMs = now;
@@ -194,13 +223,14 @@ void loop() {
   windowSumG2 += totalG * totalG;
 
   // --- Decide whether to send ---
-  if (currentActivity != lastSentActivity) {
+  // A pending send is never cancelled just because the pet settled again:
+  // peakActivity still holds the strongest movement seen in this window.
+  if (activityRank(peakActivity) > activityRank(lastSentActivity)) {
+    sendPending = true; // new movement since the last accepted report
+  } else if (currentActivity != lastSentActivity) {
+    // The movement was already reported; now report the settled state.
+    peakActivity = currentActivity;
     sendPending = true;
-  } else if (sendPending && !lastSendFailed) {
-    // The activity changed back before the report went out: nothing to report.
-    // A failed send keeps sendPending set, otherwise a pet that settles back
-    // to its previous state would silently cancel the retry.
-    sendPending = false;
   }
 
   // A failed send is retried more slowly than a normal change/heartbeat.
@@ -234,7 +264,7 @@ void loop() {
       int httpResponseCode = http.POST(jsonPayload);
 
       if (httpResponseCode >= 200 && httpResponseCode < 300) {
-        lastSentActivity = currentActivity;
+        lastSentActivity = peakActivity;
         lastSentTime = now;
         lastSendFailed = false;
         sendPending = false;
