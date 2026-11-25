@@ -1147,6 +1147,7 @@ async function loadOwnerActivityRecords(options = {}) {
     if (!ownerActivityRecordsList) return;
 
     const append = Boolean(options.append);
+    const silent = Boolean(options.silent);
 
     ownerActivitySkip = append
         ? ownerActivitySkip + OWNER_ACTIVITY_LIMIT
@@ -1162,7 +1163,7 @@ async function loadOwnerActivityRecords(options = {}) {
         ownerActivityLoadMoreButton.disabled = true;
     }
 
-    if (ownerActivitySummary) {
+    if (ownerActivitySummary && !silent) {
         showMessage(
             ownerActivitySummary,
             append
@@ -1171,8 +1172,8 @@ async function loadOwnerActivityRecords(options = {}) {
         );
     }
 
-    // Replaced text loader with Skeleton Loader
-    if (!append) {
+    // Replaced text loader with Skeleton Loader; silent syncs keep the list on screen.
+    if (!append && !silent) {
         ownerActivityRecordsList.replaceChildren(createSkeletonLoader(2));
     }
 
@@ -1249,7 +1250,7 @@ async function loadOwnerActivityRecords(options = {}) {
             );
         }
     } catch (error) {
-        if (!append) {
+        if (!append && !silent) {
             ownerActivityRecordsList.replaceChildren();
 
             const errorMessage = document.createElement('p');
@@ -2094,6 +2095,35 @@ async function loadOwnerActivityPetOptions() {
     }
 }
 
+const OWNER_ACTIVITY_SYNC_MS = 30000;
+let ownerActivitySyncTimer = null;
+
+/**
+ * Silently pull the newest page while Activity Monitoring is open. This keeps
+ * the list fresh even in a WebView that blocks streaming responses.
+ */
+function startOwnerActivitySync() {
+    if (ownerActivitySyncTimer) return;
+
+    ownerActivitySyncTimer = setInterval(() => {
+        const section = document.getElementById('activitySection');
+        if (!section || section.hidden || document.hidden) return;
+
+        loadOwnerActivityRecords({ silent: true });
+    }, OWNER_ACTIVITY_SYNC_MS);
+}
+
+// Re-check as soon as the app is brought back to the foreground.
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+
+    const section = document.getElementById('activitySection');
+    if (section && !section.hidden) {
+        loadOwnerActivityRecords({ silent: true });
+        connectOwnerActivityStream();
+    }
+});
+
 // Load activity data when the owner opens Activity Monitoring.
 const ownerActivityNavButton = document.querySelector(
     '[data-view="activity"]'
@@ -2108,6 +2138,7 @@ if (ownerActivityNavButton) {
         // Attach the stream before the first fetch so a reading arriving in
         // between the two cannot be missed.
         connectOwnerActivityStream();
+        startOwnerActivitySync();
         await loadOwnerActivityRecords();
     });
 }
@@ -2120,6 +2151,7 @@ window.addEventListener('pageshow', (event) => {
     const activitySection = document.getElementById('activitySection');
     if (activitySection && !activitySection.hidden) {
         connectOwnerActivityStream();
+        startOwnerActivitySync();
         loadOwnerActivityRecords();
     }
 });
